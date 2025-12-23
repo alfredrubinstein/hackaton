@@ -14,9 +14,10 @@ interface RoomViewer3DProps {
   onEquipmentDrop?: (equipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => void;
   selectedEquipmentId?: string | null;
   onEquipmentSelect?: (id: string | null) => void;
+  cameraEnabled?: boolean;
 }
 
-export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop, selectedEquipmentId, onEquipmentSelect }: RoomViewer3DProps) {
+export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop, selectedEquipmentId, onEquipmentSelect, cameraEnabled = false }: RoomViewer3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -34,6 +35,8 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   const [draggingEquipmentId, setDraggingEquipmentId] = useState<string | null>(null);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
   const isInitializingRef = useRef<boolean>(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || isInitializingRef.current) return;
@@ -808,6 +811,71 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     };
   }, [draggingEquipmentId, equipment, room, onEquipmentUpdate]);
 
+  // Manejar la cámara web
+  useEffect(() => {
+    if (!cameraEnabled) {
+      // Detener la cámara si está desactivada
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+      return;
+    }
+
+    // Solicitar acceso a la cámara
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      console.error('getUserMedia no está disponible en este navegador');
+      alert('Tu navegador no soporta acceso a la cámara.');
+      return;
+    }
+
+    navigator.mediaDevices.getUserMedia({ 
+      video: { 
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: 'user'
+      } 
+    })
+      .then((stream) => {
+        console.log('Cámara activada correctamente');
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play().catch(err => {
+            console.error('Error al reproducir video:', err);
+          });
+        }
+      })
+      .catch((err) => {
+        console.error('Error accediendo a la cámara:', err);
+        let errorMessage = 'No se pudo acceder a la cámara.';
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Permiso de cámara denegado. Por favor, permite el acceso a la cámara en la configuración del navegador.';
+        } else if (err.name === 'NotFoundError') {
+          errorMessage = 'No se encontró ninguna cámara conectada.';
+        } else if (err.name === 'NotReadableError') {
+          errorMessage = 'La cámara está siendo usada por otra aplicación.';
+        }
+        alert(errorMessage);
+      });
+
+    return () => {
+      // Limpiar al desmontar o cuando cameraEnabled cambie
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => {
+          track.stop();
+        });
+        streamRef.current = null;
+      }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
+    };
+  }, [cameraEnabled]);
+
   return (
     <div
       className="relative w-full h-full"
@@ -835,6 +903,29 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         </div>
       )}
       <div ref={containerRef} className="w-full h-full rounded-lg" style={{ minHeight: '400px' }} />
+      
+      {/* Video de la cámara con transparencia */}
+      {cameraEnabled && (
+        <video
+          ref={videoRef}
+          autoPlay
+          playsInline
+          muted
+          className="absolute inset-0 w-full h-full object-cover pointer-events-none rounded-lg"
+          style={{
+            opacity: 0.5,
+            mixBlendMode: 'screen',
+            zIndex: 20,
+            backgroundColor: 'transparent'
+          }}
+          onLoadedMetadata={() => {
+            console.log('Video metadata cargado');
+          }}
+          onError={(e) => {
+            console.error('Error en el video:', e);
+          }}
+        />
+      )}
 
       <div className="absolute bottom-4 right-4 flex flex-col gap-2">
         <button

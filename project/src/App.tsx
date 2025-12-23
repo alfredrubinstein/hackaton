@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download, Camera, CameraOff } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -20,6 +20,7 @@ function App() {
   const [isInitializing, setIsInitializing] = useState(true);
   const [draggingEquipment, setDraggingEquipment] = useState<any>(null);
   const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
+  const [cameraEnabled, setCameraEnabled] = useState(false);
   const [initError, setInitError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
   const [showLeftPanel, setShowLeftPanel] = useState(true);
@@ -312,20 +313,40 @@ function App() {
                   )}
                 </p>
               </div>
-              <button
-                onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
-                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors flex items-center gap-2 text-xs font-medium"
-                aria-label={`Cambiar a vista ${viewMode === '3d' ? '2D' : '3D'}`}
-              >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {viewMode === '3d' ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
-                  )}
-                </svg>
-                {viewMode === '3d' ? '2D' : '3D'}
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
+                  className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors flex items-center gap-2 text-xs font-medium"
+                  aria-label={`Cambiar a vista ${viewMode === '3d' ? '2D' : '3D'}`}
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {viewMode === '3d' ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                    )}
+                  </svg>
+                  {viewMode === '3d' ? '2D' : '3D'}
+                </button>
+                {viewMode === '3d' && (
+                  <button
+                    onClick={() => setCameraEnabled(!cameraEnabled)}
+                    className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-xs font-medium ${
+                      cameraEnabled
+                        ? 'bg-red-600 hover:bg-red-700 text-white'
+                        : 'bg-slate-700 hover:bg-slate-800 text-white'
+                    }`}
+                    aria-label={cameraEnabled ? 'Desactivar cámara' : 'Activar cámara'}
+                  >
+                    {cameraEnabled ? (
+                      <CameraOff className="w-3.5 h-3.5" />
+                    ) : (
+                      <Camera className="w-3.5 h-3.5" />
+                    )}
+                    Cámara
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="flex-1 min-h-0">
@@ -350,6 +371,7 @@ function App() {
                       onEquipmentUpdate={handleUpdateEquipmentPosition}
                       selectedEquipmentId={selectedEquipmentId}
                       onEquipmentSelect={setSelectedEquipmentId}
+                      cameraEnabled={cameraEnabled}
                     />
                   ) : (
                     <div className="h-full">
