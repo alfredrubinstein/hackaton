@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#10b981;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#059669;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <!-- Casa -->
+  <path d="M50 20 L20 40 L20 75 L80 75 L80 40 Z" fill="url(#grad)" stroke="#047857" stroke-width="2"/>
+  <!-- Techo -->
+  <path d="M50 20 L20 40 L80 40 Z" fill="#047857"/>
+  <!-- Puerta -->
+  <rect x="42" y="60" width="16" height="15" fill="#fbbf24" rx="2"/>
+  <!-- Corazón -->
+  <path d="M50 35 C50 30, 45 25, 40 25 C35 25, 30 30, 30 35 C30 40, 50 55, 50 55 C50 55, 70 40, 70 35 C70 30, 65 25, 60 25 C55 25, 50 30, 50 35 Z" fill="#ef4444"/>
+</svg>
+

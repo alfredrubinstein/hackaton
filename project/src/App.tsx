@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
-import { Building2, Loader2, Package, List, HelpCircle, Menu } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
+import { PositionPanel } from './components/PositionPanel';
 import { EquipmentCatalog } from './components/EquipmentCatalog';
 import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
 import { initializeSampleData } from './utils/sampleData';
-import type { Room, Property, MedicalEquipment } from './types';
+import type { Room, Property, MedicalEquipment, Position3D, Installation } from './types';
 
 function App() {
   const [property, setProperty] = useState<Property | null>(null);
@@ -18,6 +19,7 @@ function App() {
   const [announcement, setAnnouncement] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
   const [draggingEquipment, setDraggingEquipment] = useState<any>(null);
+  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
   const [initError, setInitError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
   const [showLeftPanel, setShowLeftPanel] = useState(true);
@@ -80,6 +82,10 @@ function App() {
     }
   };
 
+  const handleUpdateEquipmentPosition = async (id: string, position: Position3D) => {
+    await handleUpdateEquipment(id, { position });
+  };
+
   const handleDeleteEquipment = async (id: string) => {
     try {
       await dataService.deleteMedicalEquipment(id);
@@ -91,12 +97,108 @@ function App() {
     }
   };
 
+  const generateSecurityReport = (room: Room, equipment: MedicalEquipment[], installations: Installation[]): string => {
+    const lines: string[] = [];
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('           דו״ח בטיחות ועצות - Care in Every Home');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('');
+    lines.push(`תאריך: ${new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })}`);
+    lines.push(`חדר: ${room.name}`);
+    lines.push('');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('1. מידע כללי על החדר');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push(`   גובה קירות: ${room.wall_height} מטרים`);
+    lines.push(`   מספר קירות: ${room.vertices.length}`);
+    lines.push(`   צורה: ${room.vertices.length > 4 ? 'לא רגילה' : 'מלבנית'}`);
+    lines.push('');
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('2. ציוד רפואי בחדר');
+    lines.push('═══════════════════════════════════════════════════════════');
+    if (equipment.length === 0) {
+      lines.push('   אין ציוד רפואי בחדר זה.');
+    } else {
+      equipment.forEach((eq, index) => {
+        lines.push(`   ${index + 1}. ${eq.name}`);
+        lines.push(`      סוג: ${eq.type}`);
+        lines.push(`      מיקום: X=${eq.position.x.toFixed(2)}m, Y=${eq.position.y.toFixed(2)}m, Z=${eq.position.z.toFixed(2)}m`);
+        lines.push(`      מידות: ${eq.dimensions.width}m × ${eq.dimensions.depth}m × ${eq.dimensions.height}m`);
+        lines.push('');
+      });
+    }
+    lines.push('');
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('3. התקנות בחדר');
+    lines.push('═══════════════════════════════════════════════════════════');
+    const doors = installations.filter(inst => inst.type === 'door');
+    const windows = installations.filter(inst => inst.type === 'window');
+    const powerPoints = installations.filter(inst => inst.type === 'power_point');
+    
+    lines.push(`   דלתות: ${doors.length}`);
+    lines.push(`   חלונות: ${windows.length}`);
+    lines.push(`   נקודות חשמל: ${powerPoints.length}`);
+    lines.push('');
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('4. עצות בטיחות');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('   • ודא שכל הציוד הרפואי ממוקם במרחק בטוח מקירות ומפתחות');
+    lines.push('   • שמור על מסדרונות נקיים מחפצים כדי לאפשר גישה חופשית');
+    lines.push('   • ודא שיש גישה קלה לכל נקודות החשמל');
+    lines.push('   • בדוק שהציוד לא חוסם דלתות או חלונות');
+    lines.push('   • שמור על מרחק מינימלי של 0.5 מטר בין ציוד לקירות');
+    lines.push('   • ודא שהציוד כבד ממוקם על משטחים יציבים');
+    lines.push('   • בדוק תקופתית את תקינות הציוד הרפואי');
+    lines.push('   • שמור על תאורה מספקת בכל אזורי החדר');
+    lines.push('');
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('5. המלצות תכנון');
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('   • מיקום ציוד קריטי קרוב למיטות החולים');
+    lines.push('   • שמירה על אזור עבודה נוח לצוות הרפואי');
+    lines.push('   • תכנון מסדרונות רחבים מספיק להעברת ציוד');
+    lines.push('   • מיקום נקודות חשמל נגישות לכל הציוד');
+    lines.push('   • תכנון אזורי אחסון נפרדים לציוד');
+    lines.push('');
+    
+    lines.push('═══════════════════════════════════════════════════════════');
+    lines.push('סוף הדו״ח');
+    lines.push('═══════════════════════════════════════════════════════════');
+    
+    return lines.join('\n');
+  };
+
+  const handleExportSecurityReport = () => {
+    if (!room || !equipment || !installations) return;
+
+    // Crear contenido del informe
+    const reportContent = generateSecurityReport(room, equipment, installations);
+    
+    // Crear y descargar el archivo
+    const blob = new Blob([reportContent], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `דו״ח_בטיחות_${room.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    setAnnouncement('דו״ח בטיחות exportado exitosamente');
+  };
+
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-slate-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 text-lg">Inicializando Arquitecto de Sistemas Espaciales...</p>
+          <p className="text-slate-600 text-lg">Inicializando Care in Every Home...</p>
         </div>
       </div>
     );
@@ -140,10 +242,10 @@ function App() {
       <header className="bg-white shadow-md border-b border-slate-200 flex-shrink-0">
         <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Building2 className="w-6 h-6 text-slate-700" />
+            <HeartHandshake className="w-6 h-6 text-emerald-600" />
             <div>
               <h1 className="text-lg font-bold text-slate-800">
-                Arquitecto de Sistemas Espaciales
+                Care in Every Home
               </h1>
               <p className="text-xs text-slate-600">
                 {property?.name || 'Sistema de Gestión de Espacios Médicos'}
@@ -245,6 +347,9 @@ function App() {
                       installations={installations}
                       equipment={equipment}
                       onEquipmentDrop={handleAddEquipment}
+                      onEquipmentUpdate={handleUpdateEquipmentPosition}
+                      selectedEquipmentId={selectedEquipmentId}
+                      onEquipmentSelect={setSelectedEquipmentId}
                     />
                   ) : (
                     <div className="h-full">
@@ -253,6 +358,9 @@ function App() {
                         equipment={equipment}
                         installations={installations}
                         onEquipmentDrop={handleAddEquipment}
+                        onEquipmentUpdate={handleUpdateEquipmentPosition}
+                        selectedEquipmentId={selectedEquipmentId}
+                        onEquipmentSelect={setSelectedEquipmentId}
                       />
                     </div>
                   )}
@@ -305,7 +413,23 @@ function App() {
 
         {/* Panel derecho colapsable */}
         {showRightPanel && (
-          <div className="w-64 flex-shrink-0 flex flex-col overflow-hidden">
+          <div className="w-64 flex-shrink-0 flex flex-col gap-2 overflow-hidden">
+            {room && selectedEquipmentId && (
+              <CollapsiblePanel
+                title="Posición del Objeto"
+                icon={<MapPin className="w-4 h-4 text-slate-700" />}
+                defaultExpanded={true}
+                className="flex-shrink-0"
+              >
+                <PositionPanel
+                  room={room}
+                  equipment={equipment}
+                  selectedEquipmentId={selectedEquipmentId}
+                  onUpdatePosition={handleUpdateEquipmentPosition}
+                  onDeselect={() => setSelectedEquipmentId(null)}
+                />
+              </CollapsiblePanel>
+            )}
             {room && (
               <CollapsiblePanel
                 title="Equipo Médico"
@@ -326,6 +450,19 @@ function App() {
           </div>
         )}
       </main>
+
+      {/* Botón de exportar informe de seguridad */}
+      <div className="fixed bottom-4 right-4 z-50">
+        <button
+          onClick={handleExportSecurityReport}
+          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors font-medium text-sm"
+          aria-label="Exportar דו״ח de seguridad y consejos"
+        >
+          <FileText className="w-4 h-4" />
+          <span>דו״ח בטיחות</span>
+          <Download className="w-4 h-4" />
+        </button>
+      </div>
     </div>
   );
 }

@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import earcut from 'earcut';
 import type { Room, Installation, MedicalEquipment, Position3D, Dimensions } from '../types';
-import { calculateCentroid } from '../utils/geometry';
+import { calculateCentroid, isEquipmentInValidPosition } from '../utils/geometry';
 import type { EquipmentTemplate } from '../data/medicalEquipmentCatalog';
 
 interface RoomViewer3DProps {
@@ -12,9 +12,11 @@ interface RoomViewer3DProps {
   equipment: MedicalEquipment[];
   onEquipmentUpdate?: (id: string, position: Position3D) => void;
   onEquipmentDrop?: (equipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => void;
+  selectedEquipmentId?: string | null;
+  onEquipmentSelect?: (id: string | null) => void;
 }
 
-export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop }: RoomViewer3DProps) {
+export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop, selectedEquipmentId, onEquipmentSelect }: RoomViewer3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -27,9 +29,16 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   const roomCenterRef = useRef<{ x: number; z: number } | null>(null);
   const maxRadiusRef = useRef<number>(0);
   const animationIdRef = useRef<number | null>(null);
+  const equipmentMeshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
+  const equipmentHandlesRef = useRef<Map<string, THREE.Mesh>>(new Map());
+  const [draggingEquipmentId, setDraggingEquipmentId] = useState<string | null>(null);
+  const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  const isInitializingRef = useRef<boolean>(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || isInitializingRef.current) return;
+    
+    isInitializingRef.current = true;
 
     // Esperar a que el contenedor tenga dimensiones
     const checkDimensions = () => {
@@ -39,35 +48,62 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       return width > 0 && height > 0;
     };
 
-    if (!checkDimensions()) {
-      // Esperar un frame para que el DOM se actualice
-      requestAnimationFrame(() => {
-        if (!checkDimensions()) {
-          console.warn('Container has no dimensions, retrying...');
-          setTimeout(() => {
-            if (containerRef.current && checkDimensions()) {
-              initializeRenderer();
-            }
-          }, 100);
-          return;
-        }
+    const initWithDelay = () => {
+      if (!checkDimensions()) {
+        requestAnimationFrame(() => {
+          if (!checkDimensions()) {
+            setTimeout(() => {
+              if (containerRef.current && checkDimensions() && isInitializingRef.current) {
+                initializeRenderer();
+              }
+            }, 100);
+            return;
+          }
+          if (isInitializingRef.current) {
+            initializeRenderer();
+          }
+        });
+        return;
+      }
+      if (isInitializingRef.current) {
         initializeRenderer();
-      });
-      return;
-    }
+      }
+    };
 
-    initializeRenderer();
+    initWithDelay();
 
     function initializeRenderer() {
-      if (!containerRef.current) return;
+      if (!containerRef.current || !isInitializingRef.current) return;
 
       // Limpiar renderer anterior si existe
       if (rendererRef.current) {
         try {
+          // Detener animación
+          if (animationIdRef.current !== null) {
+            cancelAnimationFrame(animationIdRef.current);
+            animationIdRef.current = null;
+          }
+          
+          // Limpiar controls
+          if (controlsRef.current) {
+            controlsRef.current.dispose();
+            controlsRef.current = null;
+          }
+          
+          // Limpiar renderer
           rendererRef.current.dispose();
           const canvas = rendererRef.current.domElement;
           if (canvas && canvas.parentNode) {
             canvas.parentNode.removeChild(canvas);
+          }
+          
+          // Forzar pérdida del contexto para liberarlo
+          const gl = rendererRef.current.getContext();
+          if (gl) {
+            const loseContext = (gl as any).getExtension('WEBGL_lose_context');
+            if (loseContext) {
+              loseContext.loseContext();
+            }
           }
         } catch (err) {
           console.warn('Error cleaning up previous renderer:', err);
@@ -76,9 +112,15 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       }
 
       // Limpiar cualquier elemento hijo del container
-      while (containerRef.current.firstChild) {
-        containerRef.current.removeChild(containerRef.current.firstChild);
+      if (containerRef.current) {
+        while (containerRef.current.firstChild) {
+          containerRef.current.removeChild(containerRef.current.firstChild);
+        }
       }
+      
+      // Limpiar referencias de escena y cámara
+      sceneRef.current = null;
+      cameraRef.current = null;
 
       let renderer: THREE.WebGLRenderer;
       let camera: THREE.PerspectiveCamera;
@@ -100,10 +142,25 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         );
         cameraRef.current = camera;
 
-        renderer = new THREE.WebGLRenderer({ 
-          antialias: true,
-          powerPreference: "high-performance"
-        });
+        // Intentar crear renderer con manejo de errores mejorado
+        try {
+          renderer = new THREE.WebGLRenderer({ 
+            antialias: true,
+            powerPreference: "high-performance",
+            preserveDrawingBuffer: false,
+            failIfMajorPerformanceCaveat: false
+          });
+        } catch (webglError) {
+          // Si falla, intentar sin antialiasing
+          try {
+            renderer = new THREE.WebGLRenderer({ 
+              antialias: false,
+              powerPreference: "default"
+            });
+          } catch (fallbackError) {
+            throw new Error('No se pudo crear el contexto WebGL. Por favor, recarga la página.');
+          }
+        }
         renderer.setSize(width, height);
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -115,6 +172,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           containerRef.current.innerHTML = '<div class="p-4 text-red-600">Error al inicializar WebGL. Por favor, recarga la página.</div>';
         }
         setIsLoading(false);
+      isInitializingRef.current = false;
         return;
       }
 
@@ -122,6 +180,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       if (!camera || !renderer || !scene) {
         console.error('Failed to create WebGL components');
         setIsLoading(false);
+      isInitializingRef.current = false;
         return;
       }
 
@@ -173,7 +232,6 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       createRoom(scene, room);
       createFloorGrid(scene, room, bounds);
       createInstallations(scene, installations, room.wall_height);
-      createEquipment(scene, equipment);
 
       // Posicionar la cámara inicialmente dentro del radio permitido
       const initialDistance = Math.min(maxRadiusRef.current * 0.7, room.wall_height * 1.5);
@@ -182,6 +240,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       controls.target.set(center.x, room.wall_height / 2, center.z);
 
       setIsLoading(false);
+      isInitializingRef.current = false;
 
       let isMounted = true;
 
@@ -257,9 +316,34 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
 
         if (rendererRef.current && sceneRef.current && cameraRef.current) {
           rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+      
+      // Actualizar posición visual de equipos si están siendo arrastrados
+      if (draggingEquipmentId && equipmentMeshesRef.current && equipmentHandlesRef.current) {
+        const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
+        if (draggedEquipment) {
+          const mesh = equipmentMeshesRef.current.get(draggingEquipmentId);
+          const handle = equipmentHandlesRef.current.get(draggingEquipmentId);
+          if (mesh && handle) {
+            mesh.position.set(
+              draggedEquipment.position.x,
+              draggedEquipment.position.y + draggedEquipment.dimensions.height / 2,
+              draggedEquipment.position.z
+            );
+            handle.position.set(
+              draggedEquipment.position.x + draggedEquipment.dimensions.width / 2 + 0.3,
+              draggedEquipment.position.y + draggedEquipment.dimensions.height + 0.2,
+              draggedEquipment.position.z + draggedEquipment.dimensions.depth / 2 + 0.3
+            );
+          }
         }
-      };
-      animate();
+      }
+
+      if (rendererRef.current && sceneRef.current && cameraRef.current) {
+        rendererRef.current.render(sceneRef.current, cameraRef.current);
+      }
+    };
+    animate();
 
       const handleResize = () => {
         if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
@@ -323,6 +407,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
 
       return () => {
         isMounted = false;
+        isInitializingRef.current = false;
         
         // Detener el bucle de animación
         if (animationIdRef.current !== null) {
@@ -339,9 +424,44 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           controlsRef.current = null;
         }
         
+        // Limpiar equipos
+        equipmentMeshesRef.current.forEach((mesh) => {
+          if (sceneRef.current) {
+            sceneRef.current.remove(mesh);
+          }
+          mesh.geometry.dispose();
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(m => m.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+        });
+        equipmentHandlesRef.current.forEach((handle) => {
+          if (sceneRef.current) {
+            sceneRef.current.remove(handle);
+          }
+          handle.geometry.dispose();
+          if (Array.isArray(handle.material)) {
+            handle.material.forEach(m => m.dispose());
+          } else {
+            handle.material.dispose();
+          }
+        });
+        equipmentMeshesRef.current.clear();
+        equipmentHandlesRef.current.clear();
+        
         // Limpiar renderer
         if (rendererRef.current) {
           try {
+            // Forzar pérdida del contexto
+            const gl = rendererRef.current.getContext();
+            if (gl) {
+              const loseContext = (gl as any).getExtension('WEBGL_lose_context');
+              if (loseContext) {
+                loseContext.loseContext();
+              }
+            }
+            
             rendererRef.current.dispose();
             const canvas = rendererRef.current.domElement;
             if (canvas && canvas.parentNode) {
@@ -353,12 +473,93 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           rendererRef.current = null;
         }
         
+        // Limpiar cualquier elemento restante del container
+        if (containerRef.current) {
+          while (containerRef.current.firstChild) {
+            containerRef.current.removeChild(containerRef.current.firstChild);
+          }
+        }
+        
         // Limpiar referencias
         sceneRef.current = null;
         cameraRef.current = null;
       };
     }
-  }, [room, installations, equipment]);
+  }, [room, installations]);
+
+  // Crear equipos cuando se agreguen o eliminen
+  const equipmentIdsRef = useRef<Set<string>>(new Set());
+  
+  useEffect(() => {
+    if (!sceneRef.current) return;
+
+    const scene = sceneRef.current;
+    const currentIds = new Set(equipment.map(eq => eq.id));
+    const previousIds = equipmentIdsRef.current;
+
+    // Detectar equipos eliminados
+    previousIds.forEach(id => {
+      if (!currentIds.has(id)) {
+        const mesh = equipmentMeshesRef.current.get(id);
+        const handle = equipmentHandlesRef.current.get(id);
+        if (mesh) {
+          scene.remove(mesh);
+          mesh.geometry.dispose();
+          if (Array.isArray(mesh.material)) {
+            mesh.material.forEach(m => m.dispose());
+          } else {
+            mesh.material.dispose();
+          }
+          equipmentMeshesRef.current.delete(id);
+        }
+        if (handle) {
+          scene.remove(handle);
+          handle.geometry.dispose();
+          if (Array.isArray(handle.material)) {
+            handle.material.forEach(m => m.dispose());
+          } else {
+            handle.material.dispose();
+          }
+          equipmentHandlesRef.current.delete(id);
+        }
+      }
+    });
+
+    // Detectar equipos nuevos
+    equipment.forEach(eq => {
+      if (!previousIds.has(eq.id)) {
+        createEquipment(scene, [eq], equipmentMeshesRef, equipmentHandlesRef);
+      }
+    });
+
+    equipmentIdsRef.current = currentIds;
+  }, [equipment.map(eq => eq.id).join(',')]); // Solo cuando cambien los IDs
+
+  // Actualizar posiciones de los meshes cuando cambien los equipos
+  useEffect(() => {
+    if (!sceneRef.current || !equipmentMeshesRef.current || !equipmentHandlesRef.current) return;
+
+    equipment.forEach(eq => {
+      const mesh = equipmentMeshesRef.current.get(eq.id);
+      const handle = equipmentHandlesRef.current.get(eq.id);
+      
+      if (mesh) {
+        mesh.position.set(
+          eq.position.x,
+          eq.position.y + eq.dimensions.height / 2,
+          eq.position.z
+        );
+      }
+      
+      if (handle) {
+        handle.position.set(
+          eq.position.x + eq.dimensions.width / 2 + 0.3,
+          eq.position.y + eq.dimensions.height + 0.2,
+          eq.position.z + eq.dimensions.depth / 2 + 0.3
+        );
+      }
+    });
+  }, [equipment]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -456,12 +657,170 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     setCameraPosition({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
   };
 
+  const [hoveredHandleId, setHoveredHandleId] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Actualizar color de handles al hacer hover
+    equipmentHandlesRef.current.forEach((handle, id) => {
+      if (handle.material instanceof THREE.MeshStandardMaterial) {
+        if (id === hoveredHandleId) {
+          handle.material.color.setHex(0xa7f3d0); // verde más claro
+          handle.material.emissive.setHex(0x6ee7b7);
+          handle.material.emissiveIntensity = 0.6;
+        } else {
+          handle.material.color.setHex(handle.userData.originalColor || 0x86efac);
+          handle.material.emissive.setHex(handle.userData.originalEmissive || 0x4ade80);
+          handle.material.emissiveIntensity = 0.4;
+        }
+      }
+    });
+  }, [hoveredHandleId]);
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!containerRef.current || !cameraRef.current || !rendererRef.current || !sceneRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+    const intersects = raycasterRef.current.intersectObjects(Array.from(equipmentHandlesRef.current.values()));
+    
+    if (intersects.length > 0) {
+      const handle = intersects[0].object as THREE.Mesh;
+      if (handle.userData.isHandle && handle.userData.equipmentId) {
+        setHoveredHandleId(handle.userData.equipmentId);
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'grab';
+        }
+        // Seleccionar el objeto al hacer hover sobre el arcoíris
+        if (onEquipmentSelect && handle.userData.equipmentId !== selectedEquipmentId) {
+          onEquipmentSelect(handle.userData.equipmentId);
+        }
+      } else {
+        setHoveredHandleId(null);
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'default';
+        }
+      }
+    } else {
+      setHoveredHandleId(null);
+      if (containerRef.current) {
+        containerRef.current.style.cursor = 'default';
+      }
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!containerRef.current || !cameraRef.current || !rendererRef.current || !sceneRef.current) return;
+    if (!controlsRef.current) return;
+    
+    // Deshabilitar controles de cámara temporalmente
+    controlsRef.current.enabled = false;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const mouse = new THREE.Vector2();
+    mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+    
+    raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+    const intersects = raycasterRef.current.intersectObjects(Array.from(equipmentHandlesRef.current.values()));
+    
+    if (intersects.length > 0) {
+      const handle = intersects[0].object as THREE.Mesh;
+      if (handle.userData.isHandle && handle.userData.equipmentId) {
+        setDraggingEquipmentId(handle.userData.equipmentId);
+        if (onEquipmentSelect) {
+          onEquipmentSelect(handle.userData.equipmentId);
+        }
+        if (containerRef.current) {
+          containerRef.current.style.cursor = 'grabbing';
+        }
+        e.preventDefault();
+        e.stopPropagation();
+      } else {
+        controlsRef.current.enabled = true;
+      }
+    } else {
+      controlsRef.current.enabled = true;
+    }
+  };
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const container = containerRef.current;
+    const handleMouseMoveEvent = (e: MouseEvent) => {
+      if (!draggingEquipmentId || !containerRef.current || !cameraRef.current || !onEquipmentUpdate) return;
+      
+      const rect = container.getBoundingClientRect();
+      const mouse = new THREE.Vector2();
+      mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      
+      raycasterRef.current.setFromCamera(mouse, cameraRef.current);
+      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const intersection = new THREE.Vector3();
+      raycasterRef.current.ray.intersectPlane(floorPlane, intersection);
+      
+      const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
+      if (draggedEquipment) {
+        const gridSize = 0.5;
+        const snappedX = Math.round(intersection.x / gridSize) * gridSize;
+        const snappedZ = Math.round(intersection.z / gridSize) * gridSize;
+        
+        const newPosition: Position3D = {
+          x: snappedX,
+          y: draggedEquipment.position.y,
+          z: snappedZ
+        };
+        
+        // Validar que no pase las paredes
+        if (isEquipmentInValidPosition(
+          newPosition,
+          { width: draggedEquipment.dimensions.width, depth: draggedEquipment.dimensions.depth },
+          room.vertices
+        )) {
+          onEquipmentUpdate(draggingEquipmentId, newPosition);
+        }
+      }
+    };
+    
+    const handleMouseUpEvent = () => {
+      setDraggingEquipmentId(null);
+      if (controlsRef.current) {
+        controlsRef.current.enabled = true;
+      }
+      if (containerRef.current) {
+        containerRef.current.style.cursor = hoveredHandleId ? 'grab' : 'default';
+      }
+    };
+    
+    if (draggingEquipmentId) {
+      window.addEventListener('mousemove', handleMouseMoveEvent);
+      window.addEventListener('mouseup', handleMouseUpEvent);
+    }
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMoveEvent);
+      window.removeEventListener('mouseup', handleMouseUpEvent);
+    };
+  }, [draggingEquipmentId, equipment, room, onEquipmentUpdate]);
+
   return (
     <div
       className="relative w-full h-full"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      onMouseDown={handleMouseDown}
+      onMouseMove={handleMouseMove}
+      onMouseUp={() => {
+        if (containerRef.current) {
+          containerRef.current.style.cursor = draggingEquipmentId ? 'grabbing' : 'default';
+        }
+      }}
     >
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
@@ -674,7 +1033,12 @@ function createInstallations(scene: THREE.Scene, installations: Installation[], 
   });
 }
 
-function createEquipment(scene: THREE.Scene, equipment: MedicalEquipment[]) {
+function createEquipment(
+  scene: THREE.Scene, 
+  equipment: MedicalEquipment[],
+  equipmentMeshesRef: React.MutableRefObject<Map<string, THREE.Mesh>>,
+  equipmentHandlesRef: React.MutableRefObject<Map<string, THREE.Mesh>>
+) {
   equipment.forEach(eq => {
     const geometry = new THREE.BoxGeometry(eq.dimensions.width, eq.dimensions.height, eq.dimensions.depth);
     const material = new THREE.MeshStandardMaterial({ color: 0x10b981 });
@@ -683,7 +1047,9 @@ function createEquipment(scene: THREE.Scene, equipment: MedicalEquipment[]) {
     mesh.rotation.set(eq.rotation.x, eq.rotation.y, eq.rotation.z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    mesh.userData.equipmentId = eq.id;
     scene.add(mesh);
+    equipmentMeshesRef.current.set(eq.id, mesh);
 
     const edges = new THREE.EdgesGeometry(geometry);
     const edgeMaterial = new THREE.LineBasicMaterial({ color: 0x059669 });
@@ -691,5 +1057,29 @@ function createEquipment(scene: THREE.Scene, equipment: MedicalEquipment[]) {
     edgeLines.position.copy(mesh.position);
     edgeLines.rotation.copy(mesh.rotation);
     scene.add(edgeLines);
+
+    // Arcoíris verde claro para mover el objeto (torus pequeño)
+    const handleGeometry = new THREE.TorusGeometry(0.12, 0.03, 8, 16);
+    // Crear material con gradiente de arcoíris verde
+    const handleMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x86efac, // verde claro
+      emissive: 0x4ade80, // verde más claro
+      emissiveIntensity: 0.4,
+      metalness: 0.3,
+      roughness: 0.7
+    });
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.position.set(
+      eq.position.x + eq.dimensions.width / 2 + 0.3,
+      eq.position.y + eq.dimensions.height + 0.2,
+      eq.position.z + eq.dimensions.depth / 2 + 0.3
+    );
+    handle.rotation.x = Math.PI / 2; // Rotar para que se vea como un arcoíris horizontal
+    handle.userData.equipmentId = eq.id;
+    handle.userData.isHandle = true;
+    handle.userData.originalColor = 0x86efac;
+    handle.userData.originalEmissive = 0x4ade80;
+    scene.add(handle);
+    equipmentHandlesRef.current.set(eq.id, handle);
   });
 }

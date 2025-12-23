@@ -1,18 +1,23 @@
 import { useState, useRef, useEffect } from 'react';
-import type { Room, MedicalEquipment, Installation } from '../types';
+import type { Room, MedicalEquipment, Installation, Position3D } from '../types';
 import type { EquipmentTemplate } from '../data/medicalEquipmentCatalog';
+import { isEquipmentInValidPosition } from '../utils/geometry';
 
 interface FloorPlan2DProps {
   room: Room;
   equipment: MedicalEquipment[];
   installations: Installation[];
   onEquipmentDrop?: (equipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => void;
+  onEquipmentUpdate?: (id: string, position: Position3D) => void;
+  selectedEquipmentId?: string | null;
+  onEquipmentSelect?: (id: string | null) => void;
 }
 
-export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop }: FloorPlan2DProps) {
+export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, onEquipmentUpdate, selectedEquipmentId, onEquipmentSelect }: FloorPlan2DProps) {
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  const [draggingEquipmentId, setDraggingEquipmentId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const minX = Math.min(...room.vertices.map(v => v.x));
@@ -202,6 +207,49 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop }:
           viewBox={viewBox}
           className="w-full h-full bg-slate-50"
           preserveAspectRatio="xMidYMid meet"
+          onMouseMove={(e) => {
+            if (draggingEquipmentId && svgRef.current && onEquipmentUpdate) {
+              const rect = svgRef.current.getBoundingClientRect();
+              const svgPoint = svgRef.current.createSVGPoint();
+              svgPoint.x = e.clientX - rect.left;
+              svgPoint.y = e.clientY - rect.top;
+              const ctm = svgRef.current.getScreenCTM();
+              if (!ctm) return;
+              const svgCoord = svgPoint.matrixTransform(ctm.inverse());
+              // Las coordenadas ya están en el sistema del viewBox, no necesitamos aplicar transformaciones inversas
+              // porque el grupo con transformaciones está dentro del SVG
+              let actualX = svgCoord.x;
+              let actualY = svgCoord.y;
+              
+              const gridSize = 0.5;
+              const snappedX = Math.round(actualX / gridSize) * gridSize;
+              const snappedY = Math.round(actualY / gridSize) * gridSize;
+              
+              const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
+              if (draggedEquipment && onEquipmentUpdate) {
+                const newPosition: Position3D = {
+                  x: snappedX,
+                  y: draggedEquipment.position.y,
+                  z: snappedY
+                };
+                
+                // Validar que no pase las paredes
+                if (isEquipmentInValidPosition(
+                  newPosition,
+                  { width: draggedEquipment.dimensions.width, depth: draggedEquipment.dimensions.depth },
+                  room.vertices
+                )) {
+                  onEquipmentUpdate(draggingEquipmentId, newPosition);
+                }
+              }
+            }
+          }}
+          onMouseUp={() => {
+            setDraggingEquipmentId(null);
+          }}
+          onMouseLeave={() => {
+            setDraggingEquipmentId(null);
+          }}
         >
           <g
             style={{
@@ -402,6 +450,52 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop }:
               >
                 {eq.name.substring(0, 3)}
               </text>
+              {/* Arcoíris verde claro para mover el objeto */}
+              <g
+                transform={`translate(${eq.position.x + eq.dimensions.width / 2 + 0.3}, ${eq.position.z + eq.dimensions.depth / 2 + 0.3})`}
+                style={{ cursor: hoveredHandleId === eq.id ? 'grab' : 'pointer' }}
+                onMouseDown={(e) => {
+                  e.stopPropagation();
+                  setDraggingEquipmentId(eq.id);
+                  if (onEquipmentSelect) {
+                    onEquipmentSelect(eq.id);
+                  }
+                }}
+                onMouseEnter={() => {
+                  setHoveredHandleId(eq.id);
+                  if (onEquipmentSelect) {
+                    onEquipmentSelect(eq.id);
+                  }
+                }}
+                onMouseLeave={() => setHoveredHandleId(null)}
+                className="transition-all"
+              >
+                {/* Arcoíris verde claro - círculos concéntricos con diferentes tonos de verde */}
+                <circle
+                  r={0.25}
+                  fill={hoveredHandleId === eq.id ? "#d1fae5" : "#a7f3d0"}
+                  opacity={hoveredHandleId === eq.id ? 1 : 0.9}
+                  className="transition-all duration-200"
+                />
+                <circle
+                  r={0.2}
+                  fill={hoveredHandleId === eq.id ? "#a7f3d0" : "#86efac"}
+                  opacity={hoveredHandleId === eq.id ? 1 : 0.8}
+                  className="transition-all duration-200"
+                />
+                <circle
+                  r={0.15}
+                  fill={hoveredHandleId === eq.id ? "#86efac" : "#6ee7b7"}
+                  opacity={hoveredHandleId === eq.id ? 1 : 0.7}
+                  className="transition-all duration-200"
+                />
+                <circle
+                  r={0.1}
+                  fill={hoveredHandleId === eq.id ? "#6ee7b7" : "#4ade80"}
+                  opacity={hoveredHandleId === eq.id ? 1 : 0.6}
+                  className="transition-all duration-200"
+                />
+              </g>
             </g>
           ))}
 
