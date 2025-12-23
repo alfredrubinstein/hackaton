@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Supabase Connection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Testing Supabase Connection</h1>
+    <div id="results"></div>
+
+    <script>
+        const supabaseUrl = 'https://ejmsxfhsuzsfhnfvnoze.supabase.co';
+        const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVqbXN4ZmhzdXpzZmhuZnZub3plIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY1MDM0ODAsImV4cCI6MjA4MjA3OTQ4MH0._T-zSB-Bp9JcWyvWSRjf_pwwTWOVnEXcS4s79w_2nYU';
+
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseAnonKey);
+
+        async function testConnection() {
+            const resultsDiv = document.getElementById('results');
+
+            try {
+                resultsDiv.innerHTML += '<p>Testing SELECT...</p>';
+                const { data: selectData, error: selectError } = await supabase
+                    .from('properties')
+                    .select('*');
+
+                if (selectError) {
+                    resultsDiv.innerHTML += `<p style="color: red;">SELECT Error: ${selectError.message}</p>`;
+                } else {
+                    resultsDiv.innerHTML += `<p style="color: green;">SELECT Success: ${selectData.length} properties found</p>`;
+                }
+
+                resultsDiv.innerHTML += '<p>Testing INSERT...</p>';
+                const { data: insertData, error: insertError } = await supabase
+                    .from('properties')
+                    .insert({ name: 'Test Property ' + Date.now(), view_box: '0 0 100 100' })
+                    .select();
+
+                if (insertError) {
+                    resultsDiv.innerHTML += `<p style="color: red;">INSERT Error: ${insertError.message}</p>`;
+                    resultsDiv.innerHTML += `<pre>${JSON.stringify(insertError, null, 2)}</pre>`;
+                } else {
+                    resultsDiv.innerHTML += `<p style="color: green;">INSERT Success: Created property with ID ${insertData[0].id}</p>`;
+                }
+
+            } catch (error) {
+                resultsDiv.innerHTML += `<p style="color: red;">General Error: ${error.message}</p>`;
+            }
+        }
+
+        testConnection();
+    </script>
+</body>
+</html>

@@ -1,0 +1,42 @@
+# Dependencias
+node_modules/
+jspm_packages/
+.pnp
+.pnp.js
+
+# Producción / Build
+dist/
+build/
+out/
+.next/
+
+# Variables de entorno (¡Seguridad!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+logs/
+*.log
+
+# Base de Datos y Cache
+.mongodb/
+.cache/
+.eslintcache
+
+# Archivos de Sistema
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Modelos 3D pesados (Opcional, si usas archivos de trabajo grandes)
+*.blend
+*.fbx
+*.obj
