@@ -31,11 +31,10 @@ export function MiniMap({ rooms, selectedRoomId, onRoomSelect, viewBox = '0 0 10
   }, [rooms, selectedRoomId, onRoomSelect]);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4">
-      <h2 className="text-lg font-semibold mb-3 text-slate-800">Plano de Planta</h2>
+    <div className="w-full">
       <svg
         viewBox={viewBox}
-        className="w-full h-64 border border-slate-200 rounded"
+        className="w-full h-48 border border-slate-200 rounded"
         role="img"
         aria-label="Mapa interactivo de la propiedad"
       >
@@ -84,9 +83,9 @@ export function MiniMap({ rooms, selectedRoomId, onRoomSelect, viewBox = '0 0 10
         ))}
       </svg>
 
-      <div className="mt-3 text-sm text-slate-600">
+      <div className="mt-2 text-xs text-slate-600">
         <p>
-          <span className="font-medium">Navegación:</span> Clic en habitación o usa flechas del teclado
+          Clic en habitación o usa flechas del teclado
         </p>
       </div>
     </div>

@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Building2, Loader2 } from 'lucide-react';
-import { MiniMap } from './components/MiniMap';
+import { Building2, Loader2, Package, List, HelpCircle, Menu } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
 import { EquipmentCatalog } from './components/EquipmentCatalog';
+import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
@@ -17,9 +17,12 @@ function App() {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
   const [announcement, setAnnouncement] = useState('');
   const [isInitializing, setIsInitializing] = useState(true);
-  const [fadeTransition, setFadeTransition] = useState(false);
   const [draggingEquipment, setDraggingEquipment] = useState<any>(null);
   const [initError, setInitError] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
 
   const { room, installations, equipment, loading, error, setEquipment } = useRoomData(selectedRoomId);
 
@@ -54,23 +57,6 @@ function App() {
     initialize();
   }, []);
 
-  const handleRoomSelect = (roomId: string) => {
-    if (roomId === selectedRoomId) return;
-
-    setFadeTransition(true);
-    setTimeout(() => {
-      setSelectedRoomId(roomId);
-      const selectedRoom = rooms.find(r => r.id === roomId);
-      if (selectedRoom) {
-        setAnnouncement(
-          `Entrando en: ${selectedRoom.name} - Forma ${
-            selectedRoom.vertices.length > 4 ? 'irregular' : 'rectangular'
-          }`
-        );
-      }
-      setFadeTransition(false);
-    }, 300);
-  };
 
   const handleAddEquipment = async (newEquipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => {
     try {
@@ -147,145 +133,199 @@ function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200">
+    <div className="h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col overflow-hidden">
       <AccessibilityAnnouncer message={announcement} />
 
-      <header className="bg-white shadow-md border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8">
+      {/* Header compacto */}
+      <header className="bg-white shadow-md border-b border-slate-200 flex-shrink-0">
+        <div className="px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-slate-700" />
+            <Building2 className="w-6 h-6 text-slate-700" />
             <div>
-              <h1 className="text-2xl font-bold text-slate-800">
+              <h1 className="text-lg font-bold text-slate-800">
                 Arquitecto de Sistemas Espaciales
               </h1>
-              <p className="text-sm text-slate-600">
+              <p className="text-xs text-slate-600">
                 {property?.name || 'Sistema de Gestión de Espacios Médicos'}
               </p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowLeftPanel(!showLeftPanel)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Toggle panel izquierdo"
+            >
+              <Menu className="w-5 h-5 text-slate-700" />
+            </button>
+            <button
+              onClick={() => setShowRightPanel(!showRightPanel)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Toggle panel derecho"
+            >
+              <List className="w-5 h-5 text-slate-700" />
+            </button>
+            <button
+              onClick={() => setShowHelp(!showHelp)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Toggle ayuda"
+            >
+              <HelpCircle className="w-5 h-5 text-slate-700" />
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <MiniMap
-              rooms={rooms}
-              selectedRoomId={selectedRoomId}
-              onRoomSelect={handleRoomSelect}
-              viewBox={property?.view_box}
-            />
-
-            <EquipmentCatalog
-              onDragStart={setDraggingEquipment}
-            />
-          </div>
-
-          <div className="lg:col-span-1 space-y-6">
-            {room && (
-              <EquipmentPanel
-                room={room}
-                equipment={equipment}
-                onAddEquipment={handleAddEquipment}
-                onUpdateEquipment={handleUpdateEquipment}
-                onDeleteEquipment={handleDeleteEquipment}
+      {/* Contenido principal */}
+      <main className="flex-1 flex gap-2 p-2 overflow-hidden">
+        {/* Panel izquierdo colapsable */}
+        {showLeftPanel && (
+          <div className="w-64 flex-shrink-0 flex flex-col gap-2 overflow-hidden">
+            <CollapsiblePanel
+              title="Catálogo de Equipos"
+              icon={<Package className="w-4 h-4 text-slate-700" />}
+              defaultExpanded={true}
+              className="flex-1 flex flex-col min-h-0"
+            >
+              <EquipmentCatalog
+                onDragStart={setDraggingEquipment}
               />
-            )}
+            </CollapsiblePanel>
           </div>
+        )}
 
-          <div className="lg:col-span-2 space-y-6">
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-              <div className="p-4 border-b border-slate-200 bg-slate-50">
-                <h2 className="text-lg font-semibold text-slate-800">
-                  Vista 3D: {room?.name || 'Seleccione una habitación'}
+        {/* Vista principal */}
+        <div className="flex-1 flex flex-col gap-2 overflow-hidden min-w-0">
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden flex-1 flex flex-col">
+            <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
+              <div>
+                <h2 className="text-base font-semibold text-slate-800">
+                  {viewMode === '3d' ? 'Vista 3D' : 'Vista 2D'}: {room?.name || 'Seleccione una habitación'}
                 </h2>
-                <p className="text-sm text-slate-600 mt-1">
+                <p className="text-xs text-slate-600 mt-0.5">
                   {room && (
                     <>
-                      {installations.length} instalaciones detectadas •{' '}
-                      {equipment.length} equipos médicos
+                      {installations.length} instalaciones • {equipment.length} equipos
                     </>
                   )}
                 </p>
               </div>
-
-              <div
-                className={`h-[600px] transition-opacity duration-300 ${
-                  fadeTransition ? 'opacity-0' : 'opacity-100'
-                }`}
+              <button
+                onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
+                className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors flex items-center gap-2 text-xs font-medium"
+                aria-label={`Cambiar a vista ${viewMode === '3d' ? '2D' : '3D'}`}
               >
-                {loading && (
-                  <div className="h-full flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-slate-600 animate-spin" />
-                  </div>
-                )}
-                {error && (
-                  <div className="h-full flex items-center justify-center">
-                    <p className="text-red-600">Error: {error}</p>
-                  </div>
-                )}
-                {room && !loading && !error && (
-                  <RoomViewer3D
-                    room={room}
-                    installations={installations}
-                    equipment={equipment}
-                    onEquipmentDrop={handleAddEquipment}
-                  />
-                )}
-              </div>
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {viewMode === '3d' ? (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
+                  ) : (
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                  )}
+                </svg>
+                {viewMode === '3d' ? '2D' : '3D'}
+              </button>
             </div>
 
-            {room && !loading && !error && (
-              <FloorPlan2D
-                room={room}
-                equipment={equipment}
-                installations={installations}
-              />
-            )}
-
-            <div className="mt-4 bg-white rounded-lg shadow-md p-4">
-              <h3 className="text-sm font-semibold text-slate-700 mb-2">
-                Guía de Uso
-              </h3>
-
-              <div className="mb-4">
-                <h4 className="text-sm font-semibold text-slate-700 mb-1">Vista 3D:</h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• <span className="font-medium">Click Izquierdo + Arrastrar:</span> Rotar cámara</li>
-                  <li>• <span className="font-medium">Rueda del Mouse:</span> Zoom in/out</li>
-                  <li>• <span className="font-medium">Click Derecho + Arrastrar:</span> Mover vista panorámica</li>
-                  <li>• <span className="font-medium">Flechas o W/A/S/D:</span> Navegar por la habitación</li>
-                  <li>• <span className="font-medium">Botones de Navegación:</span> Esquina inferior derecha</li>
-                </ul>
-              </div>
-
-              <div className="mb-4">
-                <h4 className="text-sm font-semibold text-slate-700 mb-1">Plano 2D:</h4>
-                <ul className="text-sm text-slate-600 space-y-1">
-                  <li>• <span className="font-medium">Botones +/-:</span> Zoom in/out</li>
-                  <li>• <span className="font-medium">Botón ⟲:</span> Restablecer vista</li>
-                  <li>• <span className="font-medium">Flechas:</span> Pan (esquina inferior derecha)</li>
-                  <li>• <span className="font-medium">Cuadrícula:</span> 0.5m × 0.5m</li>
-                </ul>
-              </div>
-
-              <div className="p-2 bg-slate-50 rounded text-xs text-slate-600">
-                <strong>Características:</strong>
-                <ul className="mt-1 space-y-1">
-                  <li>• El grid está delimitado por las paredes de la habitación</li>
-                  <li>• La navegación 3D está limitada al área del grid</li>
-                  <li>• Los equipos se colocan automáticamente en la cuadrícula al arrastrarlos</li>
-                  <li>• La cámara 3D está restringida entre el piso y el techo</li>
-                </ul>
-              </div>
+            <div className="flex-1 min-h-0">
+              {loading && (
+                <div className="h-full flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-slate-600 animate-spin" />
+                </div>
+              )}
+              {error && (
+                <div className="h-full flex items-center justify-center">
+                  <p className="text-red-600">Error: {error}</p>
+                </div>
+              )}
+              {room && !loading && !error && (
+                <>
+                  {viewMode === '3d' ? (
+                    <RoomViewer3D
+                      room={room}
+                      installations={installations}
+                      equipment={equipment}
+                      onEquipmentDrop={handleAddEquipment}
+                    />
+                  ) : (
+                    <div className="h-full">
+                      <FloorPlan2D
+                        room={room}
+                        equipment={equipment}
+                        installations={installations}
+                        onEquipmentDrop={handleAddEquipment}
+                      />
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
-        </div>
-      </main>
 
-      <footer className="mt-8 py-4 text-center text-sm text-slate-600">
-        <p>Sistema desarrollado con accesibilidad y navegación compleja para gestión de espacios médicos</p>
-      </footer>
+          {/* Guía de uso colapsable */}
+          {showHelp && (
+            <CollapsiblePanel
+              title="Guía de Uso"
+              defaultExpanded={true}
+              icon={<HelpCircle className="w-4 h-4 text-slate-700" />}
+            >
+              <div className="p-3 space-y-3">
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-700 mb-1">Vista 3D:</h4>
+                  <ul className="text-xs text-slate-600 space-y-0.5">
+                    <li>• <span className="font-medium">Click Izquierdo + Arrastrar:</span> Rotar cámara</li>
+                    <li>• <span className="font-medium">Rueda del Mouse:</span> Zoom in/out</li>
+                    <li>• <span className="font-medium">Click Derecho + Arrastrar:</span> Mover vista panorámica</li>
+                    <li>• <span className="font-medium">Flechas o W/A/S/D:</span> Navegar</li>
+                  </ul>
+                </div>
+
+                <div>
+                  <h4 className="text-xs font-semibold text-slate-700 mb-1">Vista 2D:</h4>
+                  <ul className="text-xs text-slate-600 space-y-0.5">
+                    <li>• <span className="font-medium">Botones +/-:</span> Zoom in/out</li>
+                    <li>• <span className="font-medium">Botón ⟲:</span> Restablecer vista</li>
+                    <li>• <span className="font-medium">Flechas:</span> Pan</li>
+                    <li>• <span className="font-medium">Cuadrícula:</span> 0.5m × 0.5m</li>
+                  </ul>
+                </div>
+
+                <div className="p-2 bg-slate-50 rounded text-xs text-slate-600">
+                  <strong>Características:</strong>
+                  <ul className="mt-1 space-y-0.5">
+                    <li>• Grid delimitado por las paredes</li>
+                    <li>• Navegación 3D limitada al área del grid</li>
+                    <li>• Equipos se colocan automáticamente en la cuadrícula</li>
+                    <li>• Cámara 3D restringida entre piso y techo</li>
+                  </ul>
+                </div>
+              </div>
+            </CollapsiblePanel>
+          )}
+        </div>
+
+        {/* Panel derecho colapsable */}
+        {showRightPanel && (
+          <div className="w-64 flex-shrink-0 flex flex-col overflow-hidden">
+            {room && (
+              <CollapsiblePanel
+                title="Equipo Médico"
+                subtitle={`${equipment.length} equipos`}
+                icon={<List className="w-4 h-4 text-slate-700" />}
+                defaultExpanded={true}
+                className="flex-1 flex flex-col min-h-0"
+              >
+                <EquipmentPanel
+                  room={room}
+                  equipment={equipment}
+                  onAddEquipment={handleAddEquipment}
+                  onUpdateEquipment={handleUpdateEquipment}
+                  onDeleteEquipment={handleDeleteEquipment}
+                />
+              </CollapsiblePanel>
+            )}
+          </div>
+        )}
+      </main>
     </div>
   );
 }

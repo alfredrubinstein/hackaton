@@ -81,23 +81,22 @@ export function EquipmentPanel({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow-lg p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-slate-800">Equipo Médico</h2>
+    <div className="p-2">
+      <div className="flex items-center justify-between mb-3">
         <button
           onClick={() => setShowAddForm(!showAddForm)}
-          className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+          className="flex items-center gap-1 px-2 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs"
           aria-label="Agregar nuevo equipo médico"
         >
-          <Plus size={18} />
+          <Plus size={14} />
           Agregar
         </button>
       </div>
 
       {showAddForm && (
-        <form onSubmit={handleSubmit} className="mb-4 p-4 bg-slate-50 rounded-lg space-y-3">
+        <form onSubmit={handleSubmit} className="mb-3 p-3 bg-slate-50 rounded-lg space-y-2">
           <div>
-            <label htmlFor="eq-name" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="eq-name" className="block text-xs font-medium text-slate-700 mb-1">
               Nombre del Equipo
             </label>
             <input
@@ -105,21 +104,21 @@ export function EquipmentPanel({
               type="text"
               value={formData.name}
               onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
               required
               aria-required="true"
             />
           </div>
 
           <div>
-            <label htmlFor="eq-type" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="eq-type" className="block text-xs font-medium text-slate-700 mb-1">
               Tipo
             </label>
             <select
               id="eq-type"
               value={formData.type}
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+              className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
               <option value="monitor">Monitor</option>
               <option value="bed">Cama</option>
@@ -128,10 +127,10 @@ export function EquipmentPanel({
             </select>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <div>
-              <label htmlFor="eq-x" className="block text-sm font-medium text-slate-700 mb-1">
-                Posición X
+              <label htmlFor="eq-x" className="block text-xs font-medium text-slate-700 mb-1">
+                X
               </label>
               <input
                 id="eq-x"
@@ -139,13 +138,13 @@ export function EquipmentPanel({
                 step="0.1"
                 value={formData.x}
                 onChange={(e) => setFormData({ ...formData, x: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
             <div>
-              <label htmlFor="eq-y" className="block text-sm font-medium text-slate-700 mb-1">
-                Posición Y
+              <label htmlFor="eq-y" className="block text-xs font-medium text-slate-700 mb-1">
+                Y
               </label>
               <input
                 id="eq-y"
@@ -153,13 +152,13 @@ export function EquipmentPanel({
                 step="0.1"
                 value={formData.y}
                 onChange={(e) => setFormData({ ...formData, y: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
             <div>
-              <label htmlFor="eq-z" className="block text-sm font-medium text-slate-700 mb-1">
-                Posición Z
+              <label htmlFor="eq-z" className="block text-xs font-medium text-slate-700 mb-1">
+                Z
               </label>
               <input
                 id="eq-z"
@@ -167,15 +166,15 @@ export function EquipmentPanel({
                 step="0.1"
                 value={formData.z}
                 onChange={(e) => setFormData({ ...formData, z: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-3 gap-1.5">
             <div>
-              <label htmlFor="eq-width" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="eq-width" className="block text-xs font-medium text-slate-700 mb-1">
                 Ancho
               </label>
               <input
@@ -185,12 +184,12 @@ export function EquipmentPanel({
                 min="0.1"
                 value={formData.width}
                 onChange={(e) => setFormData({ ...formData, width: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
             <div>
-              <label htmlFor="eq-height" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="eq-height" className="block text-xs font-medium text-slate-700 mb-1">
                 Altura
               </label>
               <input
@@ -200,13 +199,13 @@ export function EquipmentPanel({
                 min="0.1"
                 value={formData.height}
                 onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
             <div>
-              <label htmlFor="eq-depth" className="block text-sm font-medium text-slate-700 mb-1">
-                Profundidad
+              <label htmlFor="eq-depth" className="block text-xs font-medium text-slate-700 mb-1">
+                Prof.
               </label>
               <input
                 id="eq-depth"
@@ -215,7 +214,7 @@ export function EquipmentPanel({
                 min="0.1"
                 value={formData.depth}
                 onChange={(e) => setFormData({ ...formData, depth: e.target.value })}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                className="w-full px-2 py-1.5 text-xs border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
                 required
               />
             </div>
@@ -223,7 +222,7 @@ export function EquipmentPanel({
 
           {validationError && (
             <div
-              className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm"
+              className="p-2 bg-red-50 border border-red-200 rounded-lg text-red-700 text-xs"
               role="alert"
               aria-live="polite"
             >
@@ -234,9 +233,9 @@ export function EquipmentPanel({
           <div className="flex gap-2">
             <button
               type="submit"
-              className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+              className="flex-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
             >
-              Agregar Equipo
+              Agregar
             </button>
             <button
               type="button"
@@ -244,7 +243,7 @@ export function EquipmentPanel({
                 setShowAddForm(false);
                 setValidationError('');
               }}
-              className="px-4 py-2 bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400 transition-colors"
+              className="px-3 py-1.5 text-xs bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400 transition-colors"
             >
               Cancelar
             </button>
@@ -252,31 +251,30 @@ export function EquipmentPanel({
         </form>
       )}
 
-      <div className="space-y-2" role="list" aria-label="Lista de equipos médicos">
+      <div className="space-y-1.5 max-h-[400px] overflow-y-auto" role="list" aria-label="Lista de equipos médicos">
         {equipment.length === 0 ? (
-          <p className="text-slate-500 text-sm text-center py-4">
-            No hay equipos médicos en esta habitación
+          <p className="text-slate-500 text-xs text-center py-3">
+            No hay equipos médicos
           </p>
         ) : (
           equipment.map((eq) => (
             <div
               key={eq.id}
-              className="flex items-center justify-between p-3 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
+              className="flex items-center justify-between p-2 bg-slate-50 rounded-lg hover:bg-slate-100 transition-colors"
               role="listitem"
             >
-              <div className="flex-1">
-                <h3 className="font-medium text-slate-800">{eq.name}</h3>
-                <p className="text-sm text-slate-600">
-                  Tipo: {eq.type} | Pos: ({eq.position.x.toFixed(1)}, {eq.position.y.toFixed(1)},{' '}
-                  {eq.position.z.toFixed(1)})
+              <div className="flex-1 min-w-0">
+                <h3 className="font-medium text-slate-800 text-xs truncate">{eq.name}</h3>
+                <p className="text-xs text-slate-600 truncate">
+                  {eq.type} | ({eq.position.x.toFixed(1)}, {eq.position.z.toFixed(1)})
                 </p>
               </div>
               <button
                 onClick={() => onDeleteEquipment(eq.id)}
-                className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
                 aria-label={`Eliminar ${eq.name}`}
               >
-                <Trash2 size={18} />
+                <Trash2 size={14} />
               </button>
             </div>
           ))

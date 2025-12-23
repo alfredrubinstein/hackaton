@@ -1,15 +1,18 @@
 import { useState, useRef, useEffect } from 'react';
 import type { Room, MedicalEquipment, Installation } from '../types';
+import type { EquipmentTemplate } from '../data/medicalEquipmentCatalog';
 
 interface FloorPlan2DProps {
   room: Room;
   equipment: MedicalEquipment[];
   installations: Installation[];
+  onEquipmentDrop?: (equipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => void;
 }
 
-export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps) {
+export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop }: FloorPlan2DProps) {
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const minX = Math.min(...room.vertices.map(v => v.x));
@@ -53,6 +56,74 @@ export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps
     setScale(1);
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    setIsDraggingOver(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDraggingOver(false);
+
+    if (!onEquipmentDrop || !svgRef.current) return;
+
+    try {
+      const equipmentData = JSON.parse(e.dataTransfer.getData('application/json')) as EquipmentTemplate;
+
+      const rect = svgRef.current.getBoundingClientRect();
+      const svgPoint = svgRef.current.createSVGPoint();
+      
+      // Coordenadas del mouse relativas al SVG
+      svgPoint.x = e.clientX - rect.left;
+      svgPoint.y = e.clientY - rect.top;
+
+      // Convertir coordenadas de pantalla a coordenadas del viewBox del SVG
+      // getScreenCTM() considera el viewBox y preserveAspectRatio automáticamente
+      const ctm = svgRef.current.getScreenCTM();
+      if (!ctm) return;
+
+      const svgCoord = svgPoint.matrixTransform(ctm.inverse());
+
+      // Aplicar transformaciones inversas del grupo (translate y scale)
+      let actualX = (svgCoord.x - viewOffset.x) / scale;
+      let actualY = (svgCoord.y - viewOffset.y) / scale;
+
+      // Snap a la cuadrícula de 0.5m
+      const gridSize = 0.5;
+      const snappedX = Math.round(actualX / gridSize) * gridSize;
+      const snappedY = Math.round(actualY / gridSize) * gridSize;
+
+      // Verificar que esté dentro de los límites de la habitación
+      if (snappedX < minX || snappedX > maxX || snappedY < minY || snappedY > maxY) {
+        console.warn('Equipo fuera de los límites de la habitación');
+        return;
+      }
+
+      const newEquipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'> = {
+        room_id: room.id,
+        name: equipmentData.name,
+        type: equipmentData.type,
+        position: {
+          x: snappedX,
+          y: 0,
+          z: snappedY
+        },
+        rotation: { x: 0, y: 0, z: 0 },
+        dimensions: equipmentData.defaultDimensions
+      };
+
+      onEquipmentDrop(newEquipment);
+    } catch (err) {
+      console.error('Error handling equipment drop:', err);
+    }
+  };
+
   const gridSize = 0.5;
   const gridLines = [];
   for (let x = Math.floor(minX / gridSize) * gridSize; x <= maxX; x += gridSize) {
@@ -83,10 +154,22 @@ export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between">
+    <div 
+      className="bg-white rounded-lg shadow-lg overflow-hidden h-full flex flex-col relative"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {isDraggingOver && (
+        <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 bg-opacity-20 border-4 border-dashed border-emerald-500 rounded-lg pointer-events-none z-10">
+          <div className="text-emerald-700 text-xl font-semibold bg-white px-6 py-3 rounded-lg shadow-lg">
+            Suelta aquí para colocar el equipo
+          </div>
+        </div>
+      )}
+      <div className="p-4 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
         <h2 className="text-lg font-semibold text-slate-800">
-          Plano 2D: {room.name}
+          Vista 2D: {room.name}
         </h2>
         <div className="flex gap-2">
           <button
@@ -113,90 +196,183 @@ export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps
         </div>
       </div>
 
-      <div className="relative">
+      <div className="relative flex-1 min-h-0">
         <svg
           ref={svgRef}
           viewBox={viewBox}
-          className="w-full h-96 bg-slate-50"
-          style={{
-            transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${scale})`
-          }}
+          className="w-full h-full bg-slate-50"
+          preserveAspectRatio="xMidYMid meet"
         >
+          <g
+            style={{
+              transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${scale})`,
+              transformOrigin: '0 0'
+            }}
+          >
+          {/* Fondo de la habitación */}
           <rect
             x={minX}
             y={minY}
             width={roomWidth}
             height={roomHeight}
             fill="#f8fafc"
-            stroke="#cbd5e1"
-            strokeWidth={0.2}
+            stroke="none"
           />
 
+          {/* Cuadrícula */}
           <g opacity={0.3}>
             {gridLines}
           </g>
 
-          <path
-            d={room.svg_path}
-            fill="#e2e8f0"
-            stroke="#64748b"
-            strokeWidth={0.5}
-          />
+          {/* Path del SVG (si existe) - renderizado antes de las paredes */}
+          {room.svg_path && room.svg_path.trim() && (
+            <path
+              d={room.svg_path}
+              fill="#e2e8f0"
+              stroke="none"
+              opacity={0.4}
+            />
+          )}
 
+          {/* Paredes - renderizadas después para que sean visibles */}
           {room.vertices.map((vertex, i) => {
             const nextVertex = room.vertices[(i + 1) % room.vertices.length];
+            
+            // Grosor de pared más visible (0.5m en escala para mejor visibilidad)
+            const wallThickness = 0.5;
+            
             return (
-              <line
-                key={`wall-${i}`}
-                x1={vertex.x}
-                y1={vertex.y}
-                x2={nextVertex.x}
-                y2={nextVertex.y}
-                stroke="#1e293b"
-                strokeWidth={0.8}
-              />
+              <g key={`wall-${i}`}>
+                {/* Sombra de la pared para dar profundidad - renderizada primero */}
+                <line
+                  x1={vertex.x}
+                  y1={vertex.y}
+                  x2={nextVertex.x}
+                  y2={nextVertex.y}
+                  stroke="#94a3b8"
+                  strokeWidth={wallThickness + 0.2}
+                  opacity={0.5}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+                {/* Pared principal - más gruesa y visible */}
+                <line
+                  x1={vertex.x}
+                  y1={vertex.y}
+                  x2={nextVertex.x}
+                  y2={nextVertex.y}
+                  stroke="#1e293b"
+                  strokeWidth={wallThickness}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </g>
             );
           })}
 
+          {/* Instalaciones con mejor detalle visual */}
           {installations.map((inst, idx) => {
             if (inst.type === 'door' && 'start' in inst.position) {
+              const start = inst.position.start;
+              const end = inst.position.end;
+              const midX = (start.x + end.x) / 2;
+              const midY = (start.y + end.y) / 2;
+              const width = Math.sqrt(Math.pow(end.x - start.x, 2) + Math.pow(end.y - start.y, 2));
+              
               return (
-                <line
-                  key={`door-${idx}`}
-                  x1={inst.position.start.x}
-                  y1={inst.position.start.y}
-                  x2={inst.position.end.x}
-                  y2={inst.position.end.y}
-                  stroke="#8b5cf6"
-                  strokeWidth={1}
-                />
+                <g key={`door-${idx}`}>
+                  {/* Línea de la puerta - más gruesa y visible */}
+                  <line
+                    x1={start.x}
+                    y1={start.y}
+                    x2={end.x}
+                    y2={end.y}
+                    stroke="#8b5cf6"
+                    strokeWidth={0.4}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  {/* Indicador de apertura (arco) */}
+                  <path
+                    d={`M ${start.x} ${start.y} A ${width * 0.5} ${width * 0.5} 0 0 1 ${end.x} ${end.y}`}
+                    fill="none"
+                    stroke="#8b5cf6"
+                    strokeWidth={0.2}
+                    strokeDasharray="0.3,0.3"
+                    opacity={0.7}
+                  />
+                  {/* Punto central más visible */}
+                  <circle
+                    cx={midX}
+                    cy={midY}
+                    r={0.25}
+                    fill="#8b5cf6"
+                    opacity={0.9}
+                  />
+                </g>
               );
             }
             if (inst.type === 'window' && 'start' in inst.position) {
+              const start = inst.position.start;
+              const end = inst.position.end;
+              
               return (
-                <line
-                  key={`window-${idx}`}
-                  x1={inst.position.start.x}
-                  y1={inst.position.start.y}
-                  x2={inst.position.end.x}
-                  y2={inst.position.end.y}
-                  stroke="#06b6d4"
-                  strokeWidth={1}
-                  strokeDasharray="0.5,0.5"
-                />
+                <g key={`window-${idx}`}>
+                  {/* Línea de la ventana */}
+                  <line
+                    x1={start.x}
+                    y1={start.y}
+                    x2={end.x}
+                    y2={end.y}
+                    stroke="#06b6d4"
+                    strokeWidth={0.2}
+                    strokeLinecap="round"
+                  />
+                  {/* Líneas internas de la ventana */}
+                  <line
+                    x1={start.x + (end.x - start.x) * 0.33}
+                    y1={start.y + (end.y - start.y) * 0.33}
+                    x2={start.x + (end.x - start.x) * 0.67}
+                    y2={start.y + (end.y - start.y) * 0.67}
+                    stroke="#06b6d4"
+                    strokeWidth={0.1}
+                    strokeDasharray="0.3,0.3"
+                    opacity={0.7}
+                  />
+                </g>
               );
             }
             if (inst.type === 'power_point' && 'x' in inst.position) {
               return (
-                <circle
-                  key={`power-${idx}`}
-                  cx={inst.position.x}
-                  cy={inst.position.y}
-                  r={0.3}
-                  fill="#fbbf24"
-                  stroke="#f59e0b"
-                  strokeWidth={0.1}
-                />
+                <g key={`power-${idx}`}>
+                  {/* Círculo exterior */}
+                  <circle
+                    cx={inst.position.x}
+                    cy={inst.position.y}
+                    r={0.4}
+                    fill="#fbbf24"
+                    stroke="#f59e0b"
+                    strokeWidth={0.15}
+                    opacity={0.9}
+                  />
+                  {/* Círculo interior */}
+                  <circle
+                    cx={inst.position.x}
+                    cy={inst.position.y}
+                    r={0.25}
+                    fill="#ffffff"
+                    opacity={0.8}
+                  />
+                  {/* Símbolo de enchufe */}
+                  <rect
+                    x={inst.position.x - 0.1}
+                    y={inst.position.y - 0.05}
+                    width={0.2}
+                    height={0.1}
+                    fill="#f59e0b"
+                    rx={0.02}
+                  />
+                </g>
               );
             }
             return null;
@@ -248,6 +424,7 @@ export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps
           >
             Escala: 0.5m
           </text>
+          </g>
         </svg>
 
         <div className="absolute bottom-4 right-4 flex flex-col gap-2">
@@ -292,7 +469,7 @@ export function FloorPlan2D({ room, equipment, installations }: FloorPlan2DProps
         </div>
       </div>
 
-      <div className="p-3 bg-slate-50 border-t border-slate-200">
+      <div className="p-3 bg-slate-50 border-t border-slate-200 flex-shrink-0">
         <p className="text-xs text-slate-600 text-center">
           {equipment.length} equipos • Cuadrícula de {gridSize}m •
           {' '}Área: {(roomWidth * roomHeight).toFixed(1)}m²

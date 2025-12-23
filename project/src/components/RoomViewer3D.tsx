@@ -26,90 +26,171 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   const roomBoundsRef = useRef<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
   const roomCenterRef = useRef<{ x: number; z: number } | null>(null);
   const maxRadiusRef = useRef<number>(0);
+  const animationIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!containerRef.current) return;
 
-    const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0xf8fafc);
-    sceneRef.current = scene;
-
-    const camera = new THREE.PerspectiveCamera(
-      60,
-      containerRef.current.clientWidth / containerRef.current.clientHeight,
-      0.1,
-      1000
-    );
-    cameraRef.current = camera;
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    renderer.shadowMap.enabled = true;
-    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-    containerRef.current.appendChild(renderer.domElement);
-    rendererRef.current = renderer;
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableDamping = true;
-    controls.dampingFactor = 0.05;
-    controls.minDistance = 2;
-    controls.maxDistance = 50;
-    controls.maxPolarAngle = Math.PI / 2 - 0.1;
-    controls.minPolarAngle = 0.1;
-    controlsRef.current = controls;
-
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-    scene.add(ambientLight);
-
-    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-    directionalLight.position.set(10, 20, 10);
-    directionalLight.castShadow = true;
-    directionalLight.shadow.mapSize.width = 2048;
-    directionalLight.shadow.mapSize.height = 2048;
-    scene.add(directionalLight);
-
-    const bounds = {
-      minX: Math.min(...room.vertices.map(v => v.x)),
-      maxX: Math.max(...room.vertices.map(v => v.x)),
-      minZ: Math.min(...room.vertices.map(v => v.y)),
-      maxZ: Math.max(...room.vertices.map(v => v.y))
+    // Esperar a que el contenedor tenga dimensiones
+    const checkDimensions = () => {
+      if (!containerRef.current) return false;
+      const width = containerRef.current.clientWidth;
+      const height = containerRef.current.clientHeight;
+      return width > 0 && height > 0;
     };
-    roomBoundsRef.current = bounds;
 
-    // Calcular el centro de la habitación
-    const centroid = calculateCentroid(room.vertices);
-    const center = { x: centroid.x, z: centroid.y };
-    roomCenterRef.current = center;
+    if (!checkDimensions()) {
+      // Esperar un frame para que el DOM se actualice
+      requestAnimationFrame(() => {
+        if (!checkDimensions()) {
+          console.warn('Container has no dimensions, retrying...');
+          setTimeout(() => {
+            if (containerRef.current && checkDimensions()) {
+              initializeRenderer();
+            }
+          }, 100);
+          return;
+        }
+        initializeRenderer();
+      });
+      return;
+    }
 
-    // Calcular el radio máximo: distancia desde el centro hasta el vértice más lejano
-    let maxRadius = 0;
-    room.vertices.forEach(v => {
-      const dx = v.x - center.x;
-      const dz = v.y - center.z;
-      const distance = Math.sqrt(dx * dx + dz * dz);
-      if (distance > maxRadius) {
-        maxRadius = distance;
+    initializeRenderer();
+
+    function initializeRenderer() {
+      if (!containerRef.current) return;
+
+      // Limpiar renderer anterior si existe
+      if (rendererRef.current) {
+        try {
+          rendererRef.current.dispose();
+          const canvas = rendererRef.current.domElement;
+          if (canvas && canvas.parentNode) {
+            canvas.parentNode.removeChild(canvas);
+          }
+        } catch (err) {
+          console.warn('Error cleaning up previous renderer:', err);
+        }
+        rendererRef.current = null;
       }
-    });
-    // Añadir un margen para permitir que la cámara esté ligeramente fuera de las paredes
-    maxRadiusRef.current = maxRadius + 3;
 
-    createRoom(scene, room);
-    createFloorGrid(scene, room, bounds);
-    createInstallations(scene, installations, room.wall_height);
-    createEquipment(scene, equipment);
+      // Limpiar cualquier elemento hijo del container
+      while (containerRef.current.firstChild) {
+        containerRef.current.removeChild(containerRef.current.firstChild);
+      }
 
-    // Posicionar la cámara inicialmente dentro del radio permitido
-    const initialDistance = Math.min(maxRadiusRef.current * 0.7, room.wall_height * 1.5);
-    camera.position.set(center.x, room.wall_height * 0.8, center.z + initialDistance);
-    camera.lookAt(center.x, room.wall_height / 2, center.z);
-    controls.target.set(center.x, room.wall_height / 2, center.z);
+      let renderer: THREE.WebGLRenderer;
+      let camera: THREE.PerspectiveCamera;
+      let scene: THREE.Scene;
+      
+      try {
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0xf8fafc);
+        sceneRef.current = scene;
 
-    setIsLoading(false);
+        const width = containerRef.current.clientWidth || 800;
+        const height = containerRef.current.clientHeight || 600;
 
-    const animate = () => {
-      requestAnimationFrame(animate);
-      controls.update();
+        camera = new THREE.PerspectiveCamera(
+          60,
+          width / height,
+          0.1,
+          1000
+        );
+        cameraRef.current = camera;
+
+        renderer = new THREE.WebGLRenderer({ 
+          antialias: true,
+          powerPreference: "high-performance"
+        });
+        renderer.setSize(width, height);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        containerRef.current.appendChild(renderer.domElement);
+        rendererRef.current = renderer;
+      } catch (error) {
+        console.error('Error creating WebGL renderer:', error);
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '<div class="p-4 text-red-600">Error al inicializar WebGL. Por favor, recarga la página.</div>';
+        }
+        setIsLoading(false);
+        return;
+      }
+
+      // Verificar que las variables se crearon correctamente
+      if (!camera || !renderer || !scene) {
+        console.error('Failed to create WebGL components');
+        setIsLoading(false);
+        return;
+      }
+
+      const controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+      controls.dampingFactor = 0.05;
+      controls.minDistance = 2;
+      controls.maxDistance = 50;
+      controls.maxPolarAngle = Math.PI / 2 - 0.1;
+      controls.minPolarAngle = 0.1;
+      controlsRef.current = controls;
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+
+      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+      directionalLight.position.set(10, 20, 10);
+      directionalLight.castShadow = true;
+      directionalLight.shadow.mapSize.width = 2048;
+      directionalLight.shadow.mapSize.height = 2048;
+      scene.add(directionalLight);
+
+      const bounds = {
+        minX: Math.min(...room.vertices.map(v => v.x)),
+        maxX: Math.max(...room.vertices.map(v => v.x)),
+        minZ: Math.min(...room.vertices.map(v => v.y)),
+        maxZ: Math.max(...room.vertices.map(v => v.y))
+      };
+      roomBoundsRef.current = bounds;
+
+      // Calcular el centro de la habitación
+      const centroid = calculateCentroid(room.vertices);
+      const center = { x: centroid.x, z: centroid.y };
+      roomCenterRef.current = center;
+
+      // Calcular el radio máximo: distancia desde el centro hasta el vértice más lejano
+      let maxRadius = 0;
+      room.vertices.forEach(v => {
+        const dx = v.x - center.x;
+        const dz = v.y - center.z;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+        if (distance > maxRadius) {
+          maxRadius = distance;
+        }
+      });
+      // Añadir un margen para permitir que la cámara esté ligeramente fuera de las paredes
+      maxRadiusRef.current = maxRadius + 3;
+
+      createRoom(scene, room);
+      createFloorGrid(scene, room, bounds);
+      createInstallations(scene, installations, room.wall_height);
+      createEquipment(scene, equipment);
+
+      // Posicionar la cámara inicialmente dentro del radio permitido
+      const initialDistance = Math.min(maxRadiusRef.current * 0.7, room.wall_height * 1.5);
+      camera.position.set(center.x, room.wall_height * 0.8, center.z + initialDistance);
+      camera.lookAt(center.x, room.wall_height / 2, center.z);
+      controls.target.set(center.x, room.wall_height / 2, center.z);
+
+      setIsLoading(false);
+
+      let isMounted = true;
+
+      const animate = () => {
+        if (!isMounted || !rendererRef.current || !sceneRef.current || !cameraRef.current) {
+          return;
+        }
+        animationIdRef.current = requestAnimationFrame(animate);
+        controls.update();
 
       // Restricción de altura: piso y techo
       const minHeight = 0.5;
@@ -174,19 +255,21 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         }
       }
 
-      renderer.render(scene, camera);
-    };
-    animate();
+        if (rendererRef.current && sceneRef.current && cameraRef.current) {
+          rendererRef.current.render(sceneRef.current, cameraRef.current);
+        }
+      };
+      animate();
 
-    const handleResize = () => {
-      if (!containerRef.current) return;
-      camera.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-    };
-    window.addEventListener('resize', handleResize);
+      const handleResize = () => {
+        if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
+        cameraRef.current.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
+        cameraRef.current.updateProjectionMatrix();
+        rendererRef.current.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
+      };
+      window.addEventListener('resize', handleResize);
 
-    const handleKeyDown = (e: KeyboardEvent) => {
+      const handleKeyDown = (e: KeyboardEvent) => {
       if (!cameraRef.current || !controlsRef.current) return;
 
       const moveSpeed = 2;
@@ -233,17 +316,48 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         }
       }
 
-      setCameraPosition({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
-    };
+        setCameraPosition({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+      };
 
-    window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keydown', handleKeyDown);
 
-    return () => {
-      window.removeEventListener('resize', handleResize);
-      window.removeEventListener('keydown', handleKeyDown);
-      renderer.dispose();
-      containerRef.current?.removeChild(renderer.domElement);
-    };
+      return () => {
+        isMounted = false;
+        
+        // Detener el bucle de animación
+        if (animationIdRef.current !== null) {
+          cancelAnimationFrame(animationIdRef.current);
+          animationIdRef.current = null;
+        }
+        
+        window.removeEventListener('resize', handleResize);
+        window.removeEventListener('keydown', handleKeyDown);
+        
+        // Limpiar controls
+        if (controlsRef.current) {
+          controlsRef.current.dispose();
+          controlsRef.current = null;
+        }
+        
+        // Limpiar renderer
+        if (rendererRef.current) {
+          try {
+            rendererRef.current.dispose();
+            const canvas = rendererRef.current.domElement;
+            if (canvas && canvas.parentNode) {
+              canvas.parentNode.removeChild(canvas);
+            }
+          } catch (err) {
+            console.warn('Error disposing renderer:', err);
+          }
+          rendererRef.current = null;
+        }
+        
+        // Limpiar referencias
+        sceneRef.current = null;
+        cameraRef.current = null;
+      };
+    }
   }, [room, installations, equipment]);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -361,7 +475,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           </div>
         </div>
       )}
-      <div ref={containerRef} className="w-full h-full rounded-lg" />
+      <div ref={containerRef} className="w-full h-full rounded-lg" style={{ minHeight: '400px' }} />
 
       <div className="absolute bottom-4 right-4 flex flex-col gap-2">
         <button

@@ -35,18 +35,11 @@ export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
   }, {} as Record<string, EquipmentTemplate[]>);
 
   return (
-    <div className="bg-white rounded-lg shadow-lg overflow-hidden">
-      <div className="p-4 bg-gradient-to-r from-slate-700 to-slate-600 border-b border-slate-500">
-        <h2 className="text-lg font-semibold text-white flex items-center gap-2">
-          <GripVertical size={20} />
-          Catálogo de Equipos Médicos
-        </h2>
-        <p className="text-sm text-slate-200 mt-1">
-          Arrastra los equipos a la habitación
-        </p>
-      </div>
-
-      <div className="max-h-[500px] overflow-y-auto">
+    <div className="p-2">
+      <p className="text-xs text-slate-600 mb-2 px-2">
+        Arrastra los equipos a la habitación
+      </p>
+      <div className="overflow-y-auto">
         {categories.map(category => (
           <div key={category} className="border-b border-slate-200 last:border-b-0">
             <button
@@ -98,12 +91,9 @@ export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
           </div>
         ))}
       </div>
-
-      <div className="p-3 bg-slate-50 border-t border-slate-200">
-        <p className="text-xs text-slate-600 text-center">
-          {medicalEquipmentCatalog.length} equipos disponibles
-        </p>
-      </div>
+      <p className="text-xs text-slate-500 text-center mt-2 px-2">
+        {medicalEquipmentCatalog.length} equipos disponibles
+      </p>
     </div>
   );
 }
