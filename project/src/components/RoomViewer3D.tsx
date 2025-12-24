@@ -131,19 +131,19 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       
       try {
         scene = new THREE.Scene();
-        scene.background = new THREE.Color(0xf8fafc);
-        sceneRef.current = scene;
+    scene.background = new THREE.Color(0xf8fafc);
+    sceneRef.current = scene;
 
         const width = containerRef.current.clientWidth || 800;
         const height = containerRef.current.clientHeight || 600;
 
         camera = new THREE.PerspectiveCamera(
-          60,
+      60,
           width / height,
-          0.1,
-          1000
-        );
-        cameraRef.current = camera;
+      0.1,
+      1000
+    );
+    cameraRef.current = camera;
 
         // Intentar crear renderer con manejo de errores mejorado
         try {
@@ -165,10 +165,10 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           }
         }
         renderer.setSize(width, height);
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        containerRef.current.appendChild(renderer.domElement);
-        rendererRef.current = renderer;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+    containerRef.current.appendChild(renderer.domElement);
+    rendererRef.current = renderer;
       } catch (error) {
         console.error('Error creating WebGL renderer:', error);
         if (containerRef.current) {
@@ -187,32 +187,32 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         return;
       }
 
-      const controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
-      controls.minDistance = 2;
-      controls.maxDistance = 50;
-      controls.maxPolarAngle = Math.PI / 2 - 0.1;
-      controls.minPolarAngle = 0.1;
-      controlsRef.current = controls;
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.05;
+    controls.minDistance = 2;
+    controls.maxDistance = 50;
+    controls.maxPolarAngle = Math.PI / 2 - 0.1;
+    controls.minPolarAngle = 0.1;
+    controlsRef.current = controls;
 
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
 
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(10, 20, 10);
-      directionalLight.castShadow = true;
-      directionalLight.shadow.mapSize.width = 2048;
-      directionalLight.shadow.mapSize.height = 2048;
-      scene.add(directionalLight);
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(10, 20, 10);
+    directionalLight.castShadow = true;
+    directionalLight.shadow.mapSize.width = 2048;
+    directionalLight.shadow.mapSize.height = 2048;
+    scene.add(directionalLight);
 
-      const bounds = {
-        minX: Math.min(...room.vertices.map(v => v.x)),
-        maxX: Math.max(...room.vertices.map(v => v.x)),
-        minZ: Math.min(...room.vertices.map(v => v.y)),
-        maxZ: Math.max(...room.vertices.map(v => v.y))
-      };
-      roomBoundsRef.current = bounds;
+    const bounds = {
+      minX: Math.min(...room.vertices.map(v => v.x)),
+      maxX: Math.max(...room.vertices.map(v => v.x)),
+      minZ: Math.min(...room.vertices.map(v => v.y)),
+      maxZ: Math.max(...room.vertices.map(v => v.y))
+    };
+    roomBoundsRef.current = bounds;
 
       // Calcular el centro de la habitación
       const centroid = calculateCentroid(room.vertices);
@@ -232,9 +232,9 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       // Añadir un margen para permitir que la cámara esté ligeramente fuera de las paredes
       maxRadiusRef.current = maxRadius + 3;
 
-      createRoom(scene, room);
-      createFloorGrid(scene, room, bounds);
-      createInstallations(scene, installations, room.wall_height);
+    createRoom(scene, room);
+    createFloorGrid(scene, room, bounds);
+    createInstallations(scene, installations, room.wall_height);
 
       // Posicionar la cámara inicialmente dentro del radio permitido
       const initialDistance = Math.min(maxRadiusRef.current * 0.7, room.wall_height * 1.5);
@@ -242,17 +242,17 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       camera.lookAt(center.x, room.wall_height / 2, center.z);
       controls.target.set(center.x, room.wall_height / 2, center.z);
 
-      setIsLoading(false);
+    setIsLoading(false);
       isInitializingRef.current = false;
 
       let isMounted = true;
 
-      const animate = () => {
+    const animate = () => {
         if (!isMounted || !rendererRef.current || !sceneRef.current || !cameraRef.current) {
           return;
         }
         animationIdRef.current = requestAnimationFrame(animate);
-        controls.update();
+      controls.update();
 
       // Restricción de altura: piso y techo
       const minHeight = 0.5;
@@ -348,15 +348,15 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     };
     animate();
 
-      const handleResize = () => {
+    const handleResize = () => {
         if (!containerRef.current || !cameraRef.current || !rendererRef.current) return;
         cameraRef.current.aspect = containerRef.current.clientWidth / containerRef.current.clientHeight;
         cameraRef.current.updateProjectionMatrix();
         rendererRef.current.setSize(containerRef.current.clientWidth, containerRef.current.clientHeight);
-      };
-      window.addEventListener('resize', handleResize);
+    };
+    window.addEventListener('resize', handleResize);
 
-      const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = (e: KeyboardEvent) => {
       if (!cameraRef.current || !controlsRef.current) return;
 
       const moveSpeed = 2;
@@ -403,12 +403,12 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         }
       }
 
-        setCameraPosition({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
-      };
+      setCameraPosition({ x: cam.position.x, y: cam.position.y, z: cam.position.z });
+    };
 
-      window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
 
-      return () => {
+    return () => {
         isMounted = false;
         isInitializingRef.current = false;
         
@@ -418,8 +418,8 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
           animationIdRef.current = null;
         }
         
-        window.removeEventListener('resize', handleResize);
-        window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('keydown', handleKeyDown);
         
         // Limpiar controls
         if (controlsRef.current) {
@@ -971,6 +971,170 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   );
 }
 
+// Función para crear textura de piso
+function createFloorTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Fondo base con gradiente
+  const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+  gradient.addColorStop(0, '#d1d5db');
+  gradient.addColorStop(0.5, '#e2e8f0');
+  gradient.addColorStop(1, '#d1d5db');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 512);
+  
+  // Patrón de líneas más visibles para simular baldosas
+  ctx.strokeStyle = '#94a3b8';
+  ctx.lineWidth = 2;
+  const tileSize = 64; // Simula baldosas de ~0.5m
+  
+  for (let x = 0; x < 512; x += tileSize) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+  
+  for (let y = 0; y < 512; y += tileSize) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y);
+    ctx.stroke();
+  }
+  
+  // Agregar variación de color más visible
+  const imageData = ctx.getImageData(0, 0, 512, 512);
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const x = (i / 4) % 512;
+    const y = Math.floor((i / 4) / 512);
+    const tileX = Math.floor(x / tileSize);
+    const tileY = Math.floor(y / tileSize);
+    const variation = ((tileX + tileY) % 2 === 0) ? 8 : -8;
+    imageData.data[i] = Math.max(200, Math.min(255, imageData.data[i] + variation)); // R
+    imageData.data[i + 1] = Math.max(220, Math.min(255, imageData.data[i + 1] + variation)); // G
+    imageData.data[i + 2] = Math.max(230, Math.min(255, imageData.data[i + 2] + variation)); // B
+  }
+  ctx.putImageData(imageData, 0, 0);
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 4);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Función para crear textura de techo
+function createCeilingTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Fondo base con gradiente sutil
+  const gradient = ctx.createLinearGradient(0, 0, 512, 512);
+  gradient.addColorStop(0, '#f8f9fa');
+  gradient.addColorStop(0.5, '#ffffff');
+  gradient.addColorStop(1, '#f8f9fa');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 512);
+  
+  // Patrón de textura más visible
+  ctx.fillStyle = '#e9ecef';
+  for (let i = 0; i < 200; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const size = Math.random() * 4 + 2;
+    ctx.beginPath();
+    ctx.arc(x, y, size, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  
+  // Líneas más visibles para simular paneles
+  ctx.strokeStyle = '#dee2e6';
+  ctx.lineWidth = 1.5;
+  for (let x = 0; x < 512; x += 128) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+  
+  for (let y = 0; y < 512; y += 128) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y);
+    ctx.stroke();
+  }
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  texture.needsUpdate = true;
+  return texture;
+}
+
+// Función para crear textura de pared
+function createWallTexture(): THREE.Texture {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d')!;
+  
+  // Fondo base con gradiente vertical
+  const gradient = ctx.createLinearGradient(0, 0, 0, 512);
+  gradient.addColorStop(0, '#e2e8f0');
+  gradient.addColorStop(0.5, '#f1f5f9');
+  gradient.addColorStop(1, '#e2e8f0');
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, 512, 512);
+  
+  // Variación de color más visible para simular textura de yeso
+  const imageData = ctx.getImageData(0, 0, 512, 512);
+  for (let i = 0; i < imageData.data.length; i += 4) {
+    const x = (i / 4) % 512;
+    const y = Math.floor((i / 4) / 512);
+    // Crear un patrón de textura más visible
+    const noise = Math.sin(x * 0.1) * Math.cos(y * 0.1) * 12;
+    const variation = noise + (Math.random() - 0.5) * 6;
+    imageData.data[i] = Math.max(220, Math.min(255, imageData.data[i] + variation)); // R
+    imageData.data[i + 1] = Math.max(235, Math.min(255, imageData.data[i + 1] + variation)); // G
+    imageData.data[i + 2] = Math.max(240, Math.min(255, imageData.data[i + 2] + variation)); // B
+  }
+  ctx.putImageData(imageData, 0, 0);
+  
+  // Líneas verticales más visibles
+  ctx.strokeStyle = '#cbd5e1';
+  ctx.lineWidth = 1;
+  for (let x = 0; x < 512; x += 64) {
+    ctx.beginPath();
+    ctx.moveTo(x, 0);
+    ctx.lineTo(x, 512);
+    ctx.stroke();
+  }
+  
+  // Agregar algunas líneas horizontales sutiles
+  ctx.strokeStyle = '#e2e8f0';
+  ctx.lineWidth = 0.5;
+  for (let y = 0; y < 512; y += 128) {
+    ctx.beginPath();
+    ctx.moveTo(0, y);
+    ctx.lineTo(512, y);
+    ctx.stroke();
+  }
+  
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 2);
+  texture.needsUpdate = true;
+  return texture;
+}
+
 function createRoom(scene: THREE.Scene, room: Room) {
   const vertices2D = room.vertices.map(v => [v.x, v.y]).flat();
   const triangles = earcut(vertices2D);
@@ -989,10 +1153,25 @@ function createRoom(scene: THREE.Scene, room: Room) {
   floorGeometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices3D, 3));
   floorGeometry.computeVertexNormals();
 
+  // Calcular tamaño del piso para ajustar la textura
+  const bounds = {
+    minX: Math.min(...room.vertices.map(v => v.x)),
+    maxX: Math.max(...room.vertices.map(v => v.x)),
+    minZ: Math.min(...room.vertices.map(v => v.y)),
+    maxZ: Math.max(...room.vertices.map(v => v.y))
+  };
+  const floorWidth = Math.max(bounds.maxX - bounds.minX, 1);
+  const floorDepth = Math.max(bounds.maxZ - bounds.minZ, 1);
+  
+  const floorTexture = createFloorTexture();
+  // Ajustar repetición para que cada baldosa sea aproximadamente 0.5m
+  floorTexture.repeat.set(floorWidth * 2, floorDepth * 2);
+
   const floorMaterial = new THREE.MeshStandardMaterial({
+    map: floorTexture,
     color: 0xe2e8f0,
     roughness: 0.8,
-    metalness: 0.2
+    metalness: 0.1
   });
 
   const floor = new THREE.Mesh(floorGeometry, floorMaterial);
@@ -1001,9 +1180,14 @@ function createRoom(scene: THREE.Scene, room: Room) {
 
   const ceilingGeometry = floorGeometry.clone();
   ceilingGeometry.translate(0, room.wall_height, 0);
+  
+  const ceilingTexture = createCeilingTexture();
+  ceilingTexture.repeat.set(floorWidth * 2, floorDepth * 2);
+  
   const ceilingMaterial = new THREE.MeshStandardMaterial({
+    map: ceilingTexture,
     color: 0xffffff,
-    roughness: 0.9,
+    roughness: 0.8,
     side: THREE.DoubleSide
   });
   const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
@@ -1015,9 +1199,15 @@ function createRoom(scene: THREE.Scene, room: Room) {
 
     const width = Math.sqrt(Math.pow(v2.x - v1.x, 2) + Math.pow(v2.y - v1.y, 2));
     const wallGeometry = new THREE.PlaneGeometry(width, room.wall_height);
+    
+    const wallTexture = createWallTexture();
+    // Ajustar repetición para que la textura se vea bien en las paredes
+    wallTexture.repeat.set(width * 2, room.wall_height * 2);
+    
     const wallMaterial = new THREE.MeshStandardMaterial({
-      color: 0xf1f5f9,
-      roughness: 0.7,
+      map: wallTexture,
+      color: 0xffffff, // Color blanco para que la textura se vea mejor
+      roughness: 0.6,
       side: THREE.DoubleSide
     });
     const wall = new THREE.Mesh(wallGeometry, wallMaterial);

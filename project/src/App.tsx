@@ -102,7 +102,7 @@ function App() {
     const lines: string[] = [];
     
     lines.push('═══════════════════════════════════════════════════════════');
-    lines.push('           דו״ח בטיחות ועצות - Care in Every Home');
+    lines.push('           דו״ח בטיחות ועצות - Care In Every Home');
     lines.push('═══════════════════════════════════════════════════════════');
     lines.push('');
     lines.push(`תאריך: ${new Date().toLocaleDateString('he-IL', { year: 'numeric', month: 'long', day: 'numeric' })}`);
@@ -199,7 +199,7 @@ function App() {
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 text-slate-600 animate-spin mx-auto mb-4" />
-          <p className="text-slate-600 text-lg">Inicializando Care in Every Home...</p>
+          <p className="text-slate-600 text-lg">Inicializando Care In Every Home...</p>
         </div>
       </div>
     );
@@ -246,7 +246,7 @@ function App() {
             <HeartHandshake className="w-6 h-6 text-emerald-600" />
             <div>
               <h1 className="text-lg font-bold text-slate-800">
-                Care in Every Home
+                Care In Every Home
               </h1>
               <p className="text-xs text-slate-600">
                 {property?.name || 'Sistema de Gestión de Espacios Médicos'}
