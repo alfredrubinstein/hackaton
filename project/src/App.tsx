@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download, Camera, CameraOff } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download, Camera, CameraOff, Image, X } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -7,9 +7,14 @@ import { PositionPanel } from './components/PositionPanel';
 import { EquipmentCatalog } from './components/EquipmentCatalog';
 import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
+import { PhotoUploader, type PhotoFile } from './components/PhotoUploader';
+import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
+import { RCCarControlPanel } from '../rc/components/RCCarControlPanel';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
 import { initializeSampleData } from './utils/sampleData';
+import { visionService } from './services/visionService';
+import { roomGeneratorService, type GeneratedRoomData } from './services/roomGeneratorService';
 import type { Room, Property, MedicalEquipment, Position3D, Installation } from './types';
 
 function App() {
@@ -26,6 +31,12 @@ function App() {
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState<PhotoFile[]>([]);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [generatedRoomData, setGeneratedRoomData] = useState<GeneratedRoomData | null>(null);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+  const [showRCCarPanel, setShowRCCarPanel] = useState(false);
 
   const { room, installations, equipment, loading, error, setEquipment } = useRoomData(selectedRoomId);
 
@@ -194,6 +205,110 @@ function App() {
     setAnnouncement('דו״ח בטיחות exportado exitosamente');
   };
 
+  const handlePhotosChange = (photos: PhotoFile[]) => {
+    setUploadedPhotos(photos);
+  };
+
+  const handleAnalyzePhotos = async () => {
+    if (uploadedPhotos.length === 0) {
+      setAnalysisError('Por favor, sube al menos una foto');
+      return;
+    }
+
+    setIsAnalyzing(true);
+    setAnalysisError(null);
+    setGeneratedRoomData(null);
+
+    try {
+      // Convertir fotos a base64
+      const imagePromises = uploadedPhotos.map(async (photo) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(photo.file);
+        });
+      });
+
+      const imageDataArray = await Promise.all(imagePromises);
+
+      // Analizar todas las fotos
+      const analysisRequests = imageDataArray.map((imageData) => ({
+        imageData,
+        imageType: uploadedPhotos[0].source,
+      }));
+
+      const analysis = await visionService.analyzeMultipleImages(analysisRequests);
+
+      // Generar datos de habitación
+      const roomData = roomGeneratorService.generateRoomFromAnalysis(
+        analysis,
+        `Habitación desde Foto ${new Date().toLocaleDateString()}`
+      );
+
+      setGeneratedRoomData(roomData);
+    } catch (err: any) {
+      console.error('Error analizando fotos:', err);
+      setAnalysisError(err.message || 'Error al analizar las fotos. Por favor, intenta de nuevo.');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  const handleConfirmRoomCreation = async (roomData: GeneratedRoomData) => {
+    if (!property) {
+      setAnalysisError('No hay propiedad seleccionada');
+      return;
+    }
+
+    try {
+      // Crear la habitación
+      const newRoom = await dataService.createRoom({
+        property_id: property.id,
+        name: roomData.name,
+        svg_path: roomData.svg_path,
+        vertices: roomData.vertices,
+        wall_height: roomData.wall_height,
+      });
+
+      // Crear instalaciones
+      for (const installation of roomData.installations) {
+        await dataService.createInstallation({
+          room_id: newRoom.id,
+          type: installation.type,
+          position: installation.position,
+          subtype: installation.subtype,
+        });
+      }
+
+      // Actualizar lista de habitaciones
+      const updatedRooms = await dataService.getRoomsByProperty(property.id);
+      setRooms(updatedRooms);
+      setSelectedRoomId(newRoom.id);
+
+      // Cerrar modal y limpiar
+      setShowPhotoModal(false);
+      setUploadedPhotos([]);
+      setGeneratedRoomData(null);
+      setAnalysisError(null);
+      setAnnouncement(`Habitación "${roomData.name}" creada exitosamente desde fotos`);
+    } catch (err: any) {
+      console.error('Error creando habitación:', err);
+      setAnalysisError(`Error al crear la habitación: ${err.message}`);
+    }
+  };
+
+  const handleClosePhotoModal = () => {
+    setShowPhotoModal(false);
+    setUploadedPhotos([]);
+    setGeneratedRoomData(null);
+    setAnalysisError(null);
+    setIsAnalyzing(false);
+  };
+
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center">
@@ -275,6 +390,14 @@ function App() {
             >
               <HelpCircle className="w-5 h-5 text-slate-700" />
             </button>
+            <button
+              onClick={() => setShowPhotoModal(true)}
+              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              aria-label="Crear habitación desde foto"
+              title="Crear habitación desde foto"
+            >
+              <Image className="w-5 h-5 text-slate-700" />
+            </button>
           </div>
         </div>
       </header>
@@ -284,6 +407,39 @@ function App() {
         {/* Panel izquierdo colapsable */}
         {showLeftPanel && (
           <div className="w-64 flex-shrink-0 flex flex-col gap-2 overflow-hidden">
+            {showRCCarPanel && (
+              <CollapsiblePanel
+                title="Control Coches RC"
+                icon={<Package className="w-4 h-4 text-slate-700" />}
+                defaultExpanded={true}
+                className="flex-shrink-0"
+              >
+                <RCCarControlPanel
+                  onMapGenerated={async (mapData) => {
+                    if (!property) return;
+                    
+                    try {
+                      const newRoom = await dataService.createRoom({
+                        property_id: property.id,
+                        name: mapData.name,
+                        svg_path: mapData.svg_path,
+                        vertices: mapData.vertices,
+                        wall_height: mapData.wall_height || 2.6,
+                      });
+                      
+                      const updatedRooms = await dataService.getRoomsByProperty(property.id);
+                      setRooms(updatedRooms);
+                      setSelectedRoomId(newRoom.id);
+                      setAnnouncement(`Habitación "${mapData.name}" creada desde mapeo RC`);
+                    } catch (err: any) {
+                      console.error('Error creando habitación desde mapa:', err);
+                      setAnnouncement(`Error: ${err.message}`);
+                    }
+                  }}
+                  roomVertices={room?.vertices}
+                />
+              </CollapsiblePanel>
+            )}
             <CollapsiblePanel
               title="Catálogo de Equipos"
               icon={<Package className="w-4 h-4 text-slate-700" />}
@@ -485,6 +641,87 @@ function App() {
           <Download className="w-4 h-4" />
         </button>
       </div>
+
+      {/* Modal para crear habitación desde foto */}
+      {showPhotoModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <Image className="w-6 h-6 text-emerald-600" />
+                Crear Habitación desde Foto
+              </h2>
+              <button
+                onClick={handleClosePhotoModal}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Cerrar modal"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {/* Paso 1: Subir fotos */}
+              {!generatedRoomData && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">
+                      Paso 1: Sube fotos de la habitación
+                    </h3>
+                    <p className="text-sm text-slate-600 mb-4">
+                      Sube múltiples fotos desde diferentes ángulos para obtener mejores resultados.
+                      La IA analizará las fotos para extraer la geometría y las instalaciones.
+                    </p>
+                    <PhotoUploader
+                      onPhotosChange={handlePhotosChange}
+                      maxPhotos={5}
+                      disabled={isAnalyzing}
+                    />
+                  </div>
+
+                  {uploadedPhotos.length > 0 && (
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleAnalyzePhotos}
+                        disabled={isAnalyzing}
+                        className="px-6 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 font-medium"
+                      >
+                        {isAnalyzing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            Analizando...
+                          </>
+                        ) : (
+                          <>
+                            <Image className="w-5 h-5" />
+                            Analizar Fotos con IA
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Paso 2: Vista previa y confirmación */}
+              {generatedRoomData && (
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-800 mb-4">
+                    Paso 2: Revisa y ajusta los resultados
+                  </h3>
+                  <RoomAnalysisPreview
+                    roomData={generatedRoomData}
+                    isAnalyzing={isAnalyzing}
+                    analysisError={analysisError}
+                    onConfirm={handleConfirmRoomCreation}
+                    onCancel={handleClosePhotoModal}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
