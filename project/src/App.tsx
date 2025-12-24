@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { HeartHandshake, Loader2, Package, List, HelpCircle, Menu, MapPin, FileText, Download, Camera, CameraOff, Image, X } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -205,6 +205,92 @@ function App() {
     setAnnouncement('דו״ח בטיחות exportado exitosamente');
   };
 
+  const handleLoadFromJSON = async () => {
+    try {
+      // Crear input de archivo
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = (e.target as HTMLInputElement).files?.[0];
+        if (!file) return;
+
+        try {
+          // Leer el archivo JSON
+          const text = await file.text();
+          const jsonData = JSON.parse(text);
+
+          // Validar estructura básica
+          if (!jsonData.property || !jsonData.rooms || !Array.isArray(jsonData.rooms)) {
+            throw new Error('Formato de JSON inválido. Debe contener property y rooms.');
+          }
+
+          // Crear la propiedad
+          const newProperty = await dataService.createProperty({
+            name: jsonData.property.name,
+            view_box: jsonData.property.view_box || '0 0 100 100'
+          });
+
+          // Crear las habitaciones y sus datos
+          for (const roomData of jsonData.rooms) {
+            const newRoom = await dataService.createRoom({
+              property_id: newProperty.id,
+              name: roomData.name,
+              svg_path: roomData.svg_path,
+              vertices: roomData.vertices,
+              wall_height: roomData.wall_height || 2.6
+            });
+
+            // Crear instalaciones
+            if (roomData.installations && Array.isArray(roomData.installations)) {
+              for (const installation of roomData.installations) {
+                await dataService.createInstallation({
+                  room_id: newRoom.id,
+                  type: installation.type as 'power_point' | 'door' | 'window',
+                  position: installation.position,
+                  subtype: installation.subtype || ''
+                });
+              }
+            }
+
+            // Crear equipos médicos
+            if (roomData.equipment && Array.isArray(roomData.equipment)) {
+              for (const equipment of roomData.equipment) {
+                await dataService.createMedicalEquipment({
+                  room_id: newRoom.id,
+                  name: equipment.name,
+                  type: equipment.type,
+                  position: equipment.position,
+                  rotation: equipment.rotation || { x: 0, y: 0, z: 0 },
+                  dimensions: equipment.dimensions
+                });
+              }
+            }
+          }
+
+          // Actualizar el estado con la nueva propiedad
+          const updatedProperty = await dataService.getProperty(newProperty.id);
+          const updatedRooms = await dataService.getRoomsByProperty(newProperty.id);
+
+          setProperty(updatedProperty);
+          setRooms(updatedRooms);
+          if (updatedRooms.length > 0) {
+            setSelectedRoomId(updatedRooms[0].id);
+          }
+
+          setAnnouncement(`Propiedad "${newProperty.name}" cargada exitosamente desde JSON`);
+        } catch (error: any) {
+          console.error('Error cargando JSON:', error);
+          setAnnouncement(`Error al cargar JSON: ${error.message}`);
+        }
+      };
+      input.click();
+    } catch (error: any) {
+      console.error('Error abriendo explorador de archivos:', error);
+      setAnnouncement('Error al abrir explorador de archivos');
+    }
+  };
+
   const handlePhotosChange = (photos: PhotoFile[]) => {
     setUploadedPhotos(photos);
   };
@@ -370,34 +456,44 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowLeftPanel(!showLeftPanel)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Toggle panel izquierdo"
-            >
-              <Menu className="w-5 h-5 text-slate-700" />
-            </button>
-            <button
-              onClick={() => setShowRightPanel(!showRightPanel)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Toggle panel derecho"
-            >
-              <List className="w-5 h-5 text-slate-700" />
-            </button>
-            <button
               onClick={() => setShowHelp(!showHelp)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="Toggle ayuda"
             >
               <HelpCircle className="w-5 h-5 text-slate-700" />
             </button>
+          </div>
+        </div>
+        {/* Sección de botones horizontales debajo del título */}
+        <div className="px-4 py-2 border-t border-slate-200">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setShowPhotoModal(true)}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Crear habitación desde foto"
-              title="Crear habitación desde foto"
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="יצירת סביבה עם AI"
             >
-              <Image className="w-5 h-5 text-slate-700" />
+              <Image className="w-4 h-4" />
+              יצירת סביבה עם AI
             </button>
+            <button
+              onClick={handleLoadFromJSON}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="פתח חדש"
+            >
+              <FolderOpen className="w-4 h-4" />
+              פתח חדש
+            </button>
+            {room && (
+              <button
+                onClick={handleExportSecurityReport}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+                aria-label="Exportar דו״ח de seguridad y consejos"
+              >
+                <FileText className="w-4 h-4" />
+                <span>דו״ח בטיחות</span>
+                <Download className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -484,24 +580,6 @@ function App() {
                   </svg>
                   {viewMode === '3d' ? '2D' : '3D'}
                 </button>
-                {viewMode === '3d' && (
-                  <button
-                    onClick={() => setCameraEnabled(!cameraEnabled)}
-                    className={`px-3 py-1.5 rounded-lg transition-colors flex items-center gap-2 text-xs font-medium ${
-                      cameraEnabled
-                        ? 'bg-red-600 hover:bg-red-700 text-white'
-                        : 'bg-slate-700 hover:bg-slate-800 text-white'
-                    }`}
-                    aria-label={cameraEnabled ? 'Desactivar cámara' : 'Activar cámara'}
-                  >
-                    {cameraEnabled ? (
-                      <CameraOff className="w-3.5 h-3.5" />
-                    ) : (
-                      <Camera className="w-3.5 h-3.5" />
-                    )}
-                    Cámara
-                  </button>
-                )}
               </div>
             </div>
 
@@ -525,6 +603,7 @@ function App() {
                       equipment={equipment}
                       onEquipmentDrop={handleAddEquipment}
                       onEquipmentUpdate={handleUpdateEquipmentPosition}
+                      onEquipmentDelete={handleDeleteEquipment}
                       selectedEquipmentId={selectedEquipmentId}
                       onEquipmentSelect={setSelectedEquipmentId}
                       cameraEnabled={cameraEnabled}
@@ -612,7 +691,6 @@ function App() {
               <CollapsiblePanel
                 title="Equipo Médico"
                 subtitle={`${equipment.length} equipos`}
-                icon={<List className="w-4 h-4 text-slate-700" />}
                 defaultExpanded={true}
                 className="flex-1 flex flex-col min-h-0"
               >
@@ -629,18 +707,6 @@ function App() {
         )}
       </main>
 
-      {/* Botón de exportar informe de seguridad */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <button
-          onClick={handleExportSecurityReport}
-          className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-colors font-medium text-sm"
-          aria-label="Exportar דו״ח de seguridad y consejos"
-        >
-          <FileText className="w-4 h-4" />
-          <span>דו״ח בטיחות</span>
-          <Download className="w-4 h-4" />
-        </button>
-      </div>
 
       {/* Modal para crear habitación desde foto */}
       {showPhotoModal && (

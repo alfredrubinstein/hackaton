@@ -12,12 +12,13 @@ interface RoomViewer3DProps {
   equipment: MedicalEquipment[];
   onEquipmentUpdate?: (id: string, position: Position3D) => void;
   onEquipmentDrop?: (equipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => void;
+  onEquipmentDelete?: (id: string) => void;
   selectedEquipmentId?: string | null;
   onEquipmentSelect?: (id: string | null) => void;
   cameraEnabled?: boolean;
 }
 
-export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop, selectedEquipmentId, onEquipmentSelect, cameraEnabled = false }: RoomViewer3DProps) {
+export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate, onEquipmentDrop, onEquipmentDelete, selectedEquipmentId, onEquipmentSelect, cameraEnabled = false }: RoomViewer3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
@@ -31,9 +32,21 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   const maxRadiusRef = useRef<number>(0);
   const animationIdRef = useRef<number | null>(null);
   const equipmentMeshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
-  const equipmentHandlesRef = useRef<Map<string, THREE.Mesh>>(new Map());
+  const equipmentHandlesRef = useRef<Map<string, THREE.Group>>(new Map());
   const [draggingEquipmentId, setDraggingEquipmentId] = useState<string | null>(null);
+  const [draggingAxis, setDraggingAxis] = useState<'x' | 'y' | 'z' | null>(null);
+  const dragStartPositionRef = useRef<Position3D | null>(null);
+  const dragStartMouseRef = useRef<THREE.Vector2 | null>(null);
+  const currentDragPositionRef = useRef<Position3D | null>(null);
   const raycasterRef = useRef<THREE.Raycaster>(new THREE.Raycaster());
+  
+  // Configurar raycaster con threshold para objetos pequeños
+  useEffect(() => {
+    if (raycasterRef.current) {
+      raycasterRef.current.params.Line = { threshold: 0.1 };
+      raycasterRef.current.params.Points = { threshold: 0.1 };
+    }
+  }, []);
   const isInitializingRef = useRef<boolean>(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -317,26 +330,26 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         }
       }
 
-        if (rendererRef.current && sceneRef.current && cameraRef.current) {
-          rendererRef.current.render(sceneRef.current, cameraRef.current);
-      }
-      
       // Actualizar posición visual de equipos si están siendo arrastrados
+      // Usar la posición del arrastre actual si está disponible, de lo contrario usar la del estado
       if (draggingEquipmentId && equipmentMeshesRef.current && equipmentHandlesRef.current) {
         const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
         if (draggedEquipment) {
           const mesh = equipmentMeshesRef.current.get(draggingEquipmentId);
-          const handle = equipmentHandlesRef.current.get(draggingEquipmentId);
-          if (mesh && handle) {
+          const handleGroup = equipmentHandlesRef.current.get(draggingEquipmentId);
+          if (mesh && handleGroup) {
+            // Usar la posición del arrastre actual si está disponible (actualización inmediata)
+            const currentPos = currentDragPositionRef.current || draggedEquipment.position;
             mesh.position.set(
-              draggedEquipment.position.x,
-              draggedEquipment.position.y + draggedEquipment.dimensions.height / 2,
-              draggedEquipment.position.z
+              currentPos.x,
+              currentPos.y + draggedEquipment.dimensions.height / 2,
+              currentPos.z
             );
-            handle.position.set(
-              draggedEquipment.position.x + draggedEquipment.dimensions.width / 2 + 0.3,
-              draggedEquipment.position.y + draggedEquipment.dimensions.height + 0.2,
-              draggedEquipment.position.z + draggedEquipment.dimensions.depth / 2 + 0.3
+            // Actualizar posición del grupo de ejes
+            handleGroup.position.set(
+              currentPos.x,
+              currentPos.y + draggedEquipment.dimensions.height + 0.3,
+              currentPos.z
             );
           }
         }
@@ -439,16 +452,20 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
             mesh.material.dispose();
           }
         });
-        equipmentHandlesRef.current.forEach((handle) => {
+        equipmentHandlesRef.current.forEach((handleGroup) => {
           if (sceneRef.current) {
-            sceneRef.current.remove(handle);
+            sceneRef.current.remove(handleGroup);
           }
-          handle.geometry.dispose();
-          if (Array.isArray(handle.material)) {
-            handle.material.forEach(m => m.dispose());
-          } else {
-            handle.material.dispose();
-          }
+          handleGroup.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.geometry.dispose();
+              if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          });
         });
         equipmentMeshesRef.current.clear();
         equipmentHandlesRef.current.clear();
@@ -517,12 +534,16 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
         }
         if (handle) {
           scene.remove(handle);
-          handle.geometry.dispose();
-          if (Array.isArray(handle.material)) {
-            handle.material.forEach(m => m.dispose());
-          } else {
-            handle.material.dispose();
-          }
+          handle.traverse((child) => {
+            if (child instanceof THREE.Mesh) {
+              child.geometry.dispose();
+              if (Array.isArray(child.material)) {
+                child.material.forEach(m => m.dispose());
+              } else {
+                child.material.dispose();
+              }
+            }
+          });
           equipmentHandlesRef.current.delete(id);
         }
       }
@@ -544,25 +565,27 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
 
     equipment.forEach(eq => {
       const mesh = equipmentMeshesRef.current.get(eq.id);
-      const handle = equipmentHandlesRef.current.get(eq.id);
+      const handleGroup = equipmentHandlesRef.current.get(eq.id);
       
       if (mesh) {
-        mesh.position.set(
+        const newMeshPos = new THREE.Vector3(
           eq.position.x,
           eq.position.y + eq.dimensions.height / 2,
           eq.position.z
         );
+        mesh.position.copy(newMeshPos);
       }
       
-      if (handle) {
-        handle.position.set(
-          eq.position.x + eq.dimensions.width / 2 + 0.3,
-          eq.position.y + eq.dimensions.height + 0.2,
-          eq.position.z + eq.dimensions.depth / 2 + 0.3
+      if (handleGroup) {
+        const newHandlePos = new THREE.Vector3(
+          eq.position.x,
+          eq.position.y + eq.dimensions.height + 0.3,
+          eq.position.z
         );
+        handleGroup.position.copy(newHandlePos);
       }
     });
-  }, [equipment]);
+  }, [equipment.map(eq => `${eq.id}:${eq.position.x},${eq.position.y},${eq.position.z}`).join('|')]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -661,26 +684,24 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   };
 
   const [hoveredHandleId, setHoveredHandleId] = useState<string | null>(null);
+  const [hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null);
 
+  // Actualizar visibilidad de los ejes según la selección
   useEffect(() => {
-    // Actualizar color de handles al hacer hover
-    equipmentHandlesRef.current.forEach((handle, id) => {
-      if (handle.material instanceof THREE.MeshStandardMaterial) {
-        if (id === hoveredHandleId) {
-          handle.material.color.setHex(0xa7f3d0); // verde más claro
-          handle.material.emissive.setHex(0x6ee7b7);
-          handle.material.emissiveIntensity = 0.6;
-        } else {
-          handle.material.color.setHex(handle.userData.originalColor || 0x86efac);
-          handle.material.emissive.setHex(handle.userData.originalEmissive || 0x4ade80);
-          handle.material.emissiveIntensity = 0.4;
-        }
+    equipmentHandlesRef.current.forEach((handleGroup, id) => {
+      if (handleGroup) {
+        handleGroup.visible = id === selectedEquipmentId;
       }
     });
-  }, [hoveredHandleId]);
+  }, [selectedEquipmentId]);
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!containerRef.current || !cameraRef.current || !rendererRef.current || !sceneRef.current) return;
+    
+    if (draggingEquipmentId && draggingAxis) {
+      // Durante el arrastre, no cambiar el hover
+      return;
+    }
     
     const rect = containerRef.current.getBoundingClientRect();
     const mouse = new THREE.Vector2();
@@ -688,30 +709,55 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     
     raycasterRef.current.setFromCamera(mouse, cameraRef.current);
-    const intersects = raycasterRef.current.intersectObjects(Array.from(equipmentHandlesRef.current.values()));
     
-    if (intersects.length > 0) {
-      const handle = intersects[0].object as THREE.Mesh;
-      if (handle.userData.isHandle && handle.userData.equipmentId) {
-        setHoveredHandleId(handle.userData.equipmentId);
+    // Primero verificar si hay hover sobre los ejes
+    const allAxisObjects: THREE.Object3D[] = [];
+    equipmentHandlesRef.current.forEach((handleGroup) => {
+      handleGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.userData.isAxis) {
+          allAxisObjects.push(child);
+        }
+      });
+    });
+    
+    const axisIntersects = raycasterRef.current.intersectObjects(allAxisObjects);
+    
+    if (axisIntersects.length > 0) {
+      const axisMesh = axisIntersects[0].object as THREE.Mesh;
+      if (axisMesh.userData.isAxis && axisMesh.userData.equipmentId) {
+        setHoveredHandleId(axisMesh.userData.equipmentId);
+        setHoveredAxis(axisMesh.userData.axis);
         if (containerRef.current) {
           containerRef.current.style.cursor = 'grab';
         }
-        // Seleccionar el objeto al hacer hover sobre el arcoíris
-        if (onEquipmentSelect && handle.userData.equipmentId !== selectedEquipmentId) {
-          onEquipmentSelect(handle.userData.equipmentId);
+        // Seleccionar el objeto al hacer hover sobre un eje
+        if (onEquipmentSelect && axisMesh.userData.equipmentId !== selectedEquipmentId) {
+          onEquipmentSelect(axisMesh.userData.equipmentId);
         }
-      } else {
-        setHoveredHandleId(null);
+        return;
+      }
+    }
+    
+    // Si no hay hover sobre ejes, verificar si hay hover sobre objetos
+    const equipmentIntersects = raycasterRef.current.intersectObjects(Array.from(equipmentMeshesRef.current.values()));
+    
+    if (equipmentIntersects.length > 0) {
+      const mesh = equipmentIntersects[0].object as THREE.Mesh;
+      if (mesh.userData.equipmentId) {
+        setHoveredHandleId(mesh.userData.equipmentId);
+        setHoveredAxis(null);
         if (containerRef.current) {
-          containerRef.current.style.cursor = 'default';
+          containerRef.current.style.cursor = 'pointer';
         }
+        return;
       }
-    } else {
-      setHoveredHandleId(null);
-      if (containerRef.current) {
-        containerRef.current.style.cursor = 'default';
-      }
+    }
+    
+    // No hay hover sobre nada relevante
+    setHoveredHandleId(null);
+    setHoveredAxis(null);
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'default';
     }
   };
 
@@ -719,35 +765,68 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     if (!containerRef.current || !cameraRef.current || !rendererRef.current || !sceneRef.current) return;
     if (!controlsRef.current) return;
     
-    // Deshabilitar controles de cámara temporalmente
-    controlsRef.current.enabled = false;
-    
     const rect = containerRef.current.getBoundingClientRect();
     const mouse = new THREE.Vector2();
     mouse.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
     mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
     
     raycasterRef.current.setFromCamera(mouse, cameraRef.current);
-    const intersects = raycasterRef.current.intersectObjects(Array.from(equipmentHandlesRef.current.values()));
     
-    if (intersects.length > 0) {
-      const handle = intersects[0].object as THREE.Mesh;
-      if (handle.userData.isHandle && handle.userData.equipmentId) {
-        setDraggingEquipmentId(handle.userData.equipmentId);
-        if (onEquipmentSelect) {
-          onEquipmentSelect(handle.userData.equipmentId);
+    // Primero verificar si se hizo clic en un eje
+    const allAxisObjects: THREE.Object3D[] = [];
+    equipmentHandlesRef.current.forEach((handleGroup) => {
+      handleGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.userData.isAxis) {
+          allAxisObjects.push(child);
         }
-        if (containerRef.current) {
-          containerRef.current.style.cursor = 'grabbing';
+      });
+    });
+    
+    const axisIntersects = raycasterRef.current.intersectObjects(allAxisObjects);
+    
+    if (axisIntersects.length > 0) {
+      // Se hizo clic en un eje - iniciar arrastre
+      const axisMesh = axisIntersects[0].object as THREE.Mesh;
+      if (axisMesh.userData.isAxis && axisMesh.userData.equipmentId) {
+        const eq = equipment.find(e => e.id === axisMesh.userData.equipmentId);
+        if (eq) {
+          console.log('Iniciando arrastre en eje:', axisMesh.userData.axis, 'para equipo:', eq.id);
+          controlsRef.current.enabled = false;
+          setDraggingEquipmentId(axisMesh.userData.equipmentId);
+          setDraggingAxis(axisMesh.userData.axis);
+          dragStartPositionRef.current = { ...eq.position };
+          dragStartMouseRef.current = mouse.clone();
+          if (onEquipmentSelect) {
+            onEquipmentSelect(axisMesh.userData.equipmentId);
+          }
+          if (containerRef.current) {
+            containerRef.current.style.cursor = 'grabbing';
+          }
+          e.preventDefault();
+          e.stopPropagation();
+          return;
+        }
+      }
+    }
+    
+    // Si no se hizo clic en un eje, verificar si se hizo clic en un objeto
+    const equipmentIntersects = raycasterRef.current.intersectObjects(Array.from(equipmentMeshesRef.current.values()));
+    
+    if (equipmentIntersects.length > 0) {
+      const mesh = equipmentIntersects[0].object as THREE.Mesh;
+      if (mesh.userData.equipmentId) {
+        // Seleccionar el objeto
+        if (onEquipmentSelect) {
+          onEquipmentSelect(mesh.userData.equipmentId);
         }
         e.preventDefault();
         e.stopPropagation();
-      } else {
-        controlsRef.current.enabled = true;
+        return;
       }
-    } else {
-      controlsRef.current.enabled = true;
     }
+    
+    // Si no se hizo clic en nada relevante, permitir controles de cámara
+    controlsRef.current.enabled = true;
   };
 
   useEffect(() => {
@@ -755,7 +834,18 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     
     const container = containerRef.current;
     const handleMouseMoveEvent = (e: MouseEvent) => {
-      if (!draggingEquipmentId || !containerRef.current || !cameraRef.current || !onEquipmentUpdate) return;
+      if (!draggingEquipmentId || !draggingAxis || !containerRef.current || !cameraRef.current || !onEquipmentUpdate) {
+        return;
+      }
+      if (!dragStartPositionRef.current || !dragStartMouseRef.current) {
+        return;
+      }
+      
+      const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
+      if (!draggedEquipment) {
+        console.warn('Equipo no encontrado:', draggingEquipmentId);
+        return;
+      }
       
       const rect = container.getBoundingClientRect();
       const mouse = new THREE.Vector2();
@@ -763,35 +853,142 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       mouse.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
       
       raycasterRef.current.setFromCamera(mouse, cameraRef.current);
-      const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-      const intersection = new THREE.Vector3();
-      raycasterRef.current.ray.intersectPlane(floorPlane, intersection);
       
-      const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
-      if (draggedEquipment) {
-        const gridSize = 0.5;
-        const snappedX = Math.round(intersection.x / gridSize) * gridSize;
-        const snappedZ = Math.round(intersection.z / gridSize) * gridSize;
-        
-        const newPosition: Position3D = {
+      const startPos = dragStartPositionRef.current;
+      const startMouse = dragStartMouseRef.current;
+      
+      // Obtener la dirección del eje en el espacio del mundo
+      let axisDirection: THREE.Vector3;
+      if (draggingAxis === 'x') {
+        axisDirection = new THREE.Vector3(1, 0, 0);
+      } else if (draggingAxis === 'y') {
+        axisDirection = new THREE.Vector3(0, 1, 0);
+      } else { // z
+        axisDirection = new THREE.Vector3(0, 0, 1);
+      }
+      
+      // Obtener la dirección de la cámara (hacia donde mira)
+      const cameraDirection = new THREE.Vector3();
+      cameraRef.current.getWorldDirection(cameraDirection);
+      
+      // Obtener los vectores de la cámara (right, up, forward)
+      const cameraRight = new THREE.Vector3();
+      const cameraUp = new THREE.Vector3();
+      cameraRight.setFromMatrixColumn(cameraRef.current.matrixWorld, 0).normalize();
+      cameraUp.setFromMatrixColumn(cameraRef.current.matrixWorld, 1).normalize();
+      
+      // Calcular el movimiento del mouse en el espacio de la pantalla
+      const mouseDelta = new THREE.Vector2();
+      mouseDelta.x = mouse.x - startMouse.x;
+      mouseDelta.y = mouse.y - startMouse.y;
+      
+      // Calcular la distancia de la cámara al objeto para escalar el movimiento
+      const objectWorldPos = new THREE.Vector3(startPos.x, startPos.y, startPos.z);
+      const cameraToObject = new THREE.Vector3();
+      cameraToObject.subVectors(objectWorldPos, cameraRef.current.position);
+      const distance = cameraToObject.length();
+      
+      // Factor de escala basado en la distancia y el FOV
+      const fov = cameraRef.current.fov * (Math.PI / 180);
+      const sensitivity = distance * Math.tan(fov / 2) * 2;
+      
+      // Calcular el movimiento en el espacio del mundo basado en el movimiento del mouse
+      const movementInWorld = new THREE.Vector3();
+      movementInWorld.addScaledVector(cameraRight, mouseDelta.x * sensitivity);
+      movementInWorld.addScaledVector(cameraUp, -mouseDelta.y * sensitivity); // Negativo porque Y de pantalla es invertido
+      
+      // Proyectar el movimiento en el eje seleccionado
+      // Esto nos da cuánto se movió a lo largo del eje
+      const axisProjection = movementInWorld.dot(axisDirection);
+      
+      console.log('Eje seleccionado:', draggingAxis, 'Dirección del eje:', axisDirection, 'Movimiento en mundo:', movementInWorld, 'Proyección:', axisProjection);
+      
+      const gridSize = 0.5;
+      let newPosition: Position3D;
+      
+      if (draggingAxis === 'x') {
+        const newX = startPos.x + axisProjection;
+        const snappedX = Math.round(newX / gridSize) * gridSize;
+        newPosition = {
           x: snappedX,
-          y: draggedEquipment.position.y,
+          y: startPos.y,
+          z: startPos.z
+        };
+      } else if (draggingAxis === 'y') {
+        const newY = startPos.y + axisProjection;
+        const snappedY = Math.round(newY / gridSize) * gridSize;
+        newPosition = {
+          x: startPos.x,
+          y: Math.max(0, snappedY),
+          z: startPos.z
+        };
+      } else { // z
+        const newZ = startPos.z + axisProjection;
+        const snappedZ = Math.round(newZ / gridSize) * gridSize;
+        newPosition = {
+          x: startPos.x,
+          y: startPos.y,
           z: snappedZ
         };
-        
-        // Validar que no pase las paredes
-        if (isEquipmentInValidPosition(
-          newPosition,
-          { width: draggedEquipment.dimensions.width, depth: draggedEquipment.dimensions.depth },
-          room.vertices
-        )) {
-          onEquipmentUpdate(draggingEquipmentId, newPosition);
-        }
       }
+      
+      // Guardar la posición actual para actualización visual inmediata
+      currentDragPositionRef.current = newPosition;
+      
+      // Solo actualizar visualmente durante el arrastre, no llamar a onEquipmentUpdate todavía
+      // La actualización real se hará cuando se suelte el mouse
     };
     
     const handleMouseUpEvent = () => {
+      // Cuando se suelta el mouse, crear nuevo equipo en la posición final y eliminar el original
+      if (draggingEquipmentId && currentDragPositionRef.current && onEquipmentDrop && onEquipmentDelete) {
+        const draggedEquipment = equipment.find(eq => eq.id === draggingEquipmentId);
+        if (draggedEquipment) {
+          const finalPosition = currentDragPositionRef.current;
+          
+          // Validar posición final
+          let isValid = true;
+          if (draggingAxis === 'x' || draggingAxis === 'z') {
+            isValid = isEquipmentInValidPosition(
+              finalPosition,
+              { width: draggedEquipment.dimensions.width, depth: draggedEquipment.dimensions.depth },
+              room.vertices
+            );
+          } else {
+            // Para Y, solo validar que no sea negativo
+            isValid = finalPosition.y >= 0;
+          }
+          
+          if (isValid) {
+            // Crear nuevo equipo con la posición final y todos los datos idénticos
+            const newEquipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'> = {
+              room_id: draggedEquipment.room_id,
+              name: draggedEquipment.name,
+              type: draggedEquipment.type,
+              position: finalPosition,
+              rotation: draggedEquipment.rotation,
+              dimensions: draggedEquipment.dimensions
+            };
+            
+            console.log('🔄 Creando nuevo equipo en posición final:', finalPosition);
+            console.log('🗑️ Eliminando equipo original:', draggingEquipmentId);
+            
+            // Crear el nuevo equipo
+            onEquipmentDrop(newEquipment);
+            
+            // Eliminar el equipo original
+            onEquipmentDelete(draggingEquipmentId);
+          } else {
+            console.warn('❌ Posición final inválida, no se crea nuevo equipo');
+          }
+        }
+      }
+      
       setDraggingEquipmentId(null);
+      setDraggingAxis(null);
+      dragStartPositionRef.current = null;
+      dragStartMouseRef.current = null;
+      currentDragPositionRef.current = null;
       if (controlsRef.current) {
         controlsRef.current.enabled = true;
       }
@@ -800,7 +997,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       }
     };
     
-    if (draggingEquipmentId) {
+    if (draggingEquipmentId && draggingAxis) {
       window.addEventListener('mousemove', handleMouseMoveEvent);
       window.addEventListener('mouseup', handleMouseUpEvent);
     }
@@ -809,7 +1006,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       window.removeEventListener('mousemove', handleMouseMoveEvent);
       window.removeEventListener('mouseup', handleMouseUpEvent);
     };
-  }, [draggingEquipmentId, equipment, room, onEquipmentUpdate]);
+  }, [draggingEquipmentId, draggingAxis, equipment, room, onEquipmentUpdate, hoveredHandleId]);
 
   // Manejar la cámara web
   useEffect(() => {
@@ -1314,11 +1511,62 @@ function createInstallations(scene: THREE.Scene, installations: Installation[], 
   });
 }
 
+// Función para crear una flecha de eje
+function createAxisArrow(color: number, axis: 'x' | 'y' | 'z', length: number = 0.5): THREE.Group {
+  const group = new THREE.Group();
+  
+  // Crear un cilindro para el eje (más fácil de detectar que una línea)
+  const cylinderGeometry = new THREE.CylinderGeometry(0.02, 0.02, length, 8);
+  const cylinderMaterial = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.2 });
+  const cylinder = new THREE.Mesh(cylinderGeometry, cylinderMaterial);
+  
+  // Posicionar y rotar el cilindro según el eje
+  if (axis === 'x') {
+    cylinder.rotation.z = Math.PI / 2;
+    cylinder.position.set(length / 2, 0, 0);
+  } else if (axis === 'y') {
+    cylinder.position.set(0, length / 2, 0);
+    // Ya está en la orientación correcta
+  } else { // z
+    cylinder.rotation.x = Math.PI / 2;
+    cylinder.position.set(0, 0, length / 2);
+  }
+  
+  // Hacer el cilindro interactivo (el equipmentId se asignará después)
+  cylinder.userData.isAxis = true;
+  cylinder.userData.axis = axis;
+  group.add(cylinder);
+  
+  // Crear la punta de la flecha (cono) - más grande para facilitar la detección
+  const coneGeometry = new THREE.ConeGeometry(0.08, 0.2, 8);
+  const coneMaterial = new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 0.3 });
+  const cone = new THREE.Mesh(coneGeometry, coneMaterial);
+  
+  // Posicionar y rotar el cono según el eje
+  if (axis === 'x') {
+    cone.position.set(length, 0, 0);
+    cone.rotation.z = -Math.PI / 2;
+  } else if (axis === 'y') {
+    cone.position.set(0, length, 0);
+    // No necesita rotación, ya apunta hacia arriba
+  } else { // z
+    cone.position.set(0, 0, length);
+    cone.rotation.x = Math.PI / 2;
+  }
+  
+  // Hacer el cono interactivo también (el equipmentId se asignará después)
+  cone.userData.isAxis = true;
+  cone.userData.axis = axis;
+  group.add(cone);
+  
+  return group;
+}
+
 function createEquipment(
   scene: THREE.Scene, 
   equipment: MedicalEquipment[],
   equipmentMeshesRef: React.MutableRefObject<Map<string, THREE.Mesh>>,
-  equipmentHandlesRef: React.MutableRefObject<Map<string, THREE.Mesh>>
+  equipmentHandlesRef: React.MutableRefObject<Map<string, THREE.Group>>
 ) {
   equipment.forEach(eq => {
     const geometry = new THREE.BoxGeometry(eq.dimensions.width, eq.dimensions.height, eq.dimensions.depth);
@@ -1339,28 +1587,50 @@ function createEquipment(
     edgeLines.rotation.copy(mesh.rotation);
     scene.add(edgeLines);
 
-    // Arcoíris verde claro para mover el objeto (torus pequeño)
-    const handleGeometry = new THREE.TorusGeometry(0.12, 0.03, 8, 16);
-    // Crear material con gradiente de arcoíris verde
-    const handleMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x86efac, // verde claro
-      emissive: 0x4ade80, // verde más claro
-      emissiveIntensity: 0.4,
-      metalness: 0.3,
-      roughness: 0.7
-    });
-    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
-    handle.position.set(
-      eq.position.x + eq.dimensions.width / 2 + 0.3,
-      eq.position.y + eq.dimensions.height + 0.2,
-      eq.position.z + eq.dimensions.depth / 2 + 0.3
+    // Crear grupo de ejes de transformación (estilo Blender)
+    const axesGroup = new THREE.Group();
+    axesGroup.position.set(
+      eq.position.x,
+      eq.position.y + eq.dimensions.height + 0.3,
+      eq.position.z
     );
-    handle.rotation.x = Math.PI / 2; // Rotar para que se vea como un arcoíris horizontal
-    handle.userData.equipmentId = eq.id;
-    handle.userData.isHandle = true;
-    handle.userData.originalColor = 0x86efac;
-    handle.userData.originalEmissive = 0x4ade80;
-    scene.add(handle);
-    equipmentHandlesRef.current.set(eq.id, handle);
+    
+    // Eje X (rojo)
+    const xAxis = createAxisArrow(0xff0000, 'x', 0.4);
+    xAxis.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.userData.isAxis = true;
+        child.userData.axis = 'x';
+        child.userData.equipmentId = eq.id;
+      }
+    });
+    axesGroup.add(xAxis);
+    
+    // Eje Y (verde)
+    const yAxis = createAxisArrow(0x00ff00, 'y', 0.4);
+    yAxis.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.userData.isAxis = true;
+        child.userData.axis = 'y';
+        child.userData.equipmentId = eq.id;
+      }
+    });
+    axesGroup.add(yAxis);
+    
+    // Eje Z (azul)
+    const zAxis = createAxisArrow(0x0000ff, 'z', 0.4);
+    zAxis.traverse((child) => {
+      if (child instanceof THREE.Mesh) {
+        child.userData.isAxis = true;
+        child.userData.axis = 'z';
+        child.userData.equipmentId = eq.id;
+      }
+    });
+    axesGroup.add(zAxis);
+    
+    // Ocultar por defecto, solo se mostrará cuando el objeto esté seleccionado
+    axesGroup.visible = false;
+    scene.add(axesGroup);
+    equipmentHandlesRef.current.set(eq.id, axesGroup);
   });
 }
