@@ -15,6 +15,7 @@ import { dataService } from './services/dataService';
 import { initializeSampleData } from './utils/sampleData';
 import { visionService } from './services/visionService';
 import { roomGeneratorService, type GeneratedRoomData } from './services/roomGeneratorService';
+import { availableHomes } from './data/homes/index';
 import type { Room, Property, MedicalEquipment, Position3D, Installation } from './types';
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
   const [generatedRoomData, setGeneratedRoomData] = useState<GeneratedRoomData | null>(null);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
   const [showRCCarPanel, setShowRCCarPanel] = useState(false);
+  const [showHomeSelector, setShowHomeSelector] = useState(false);
 
   const { room, installations, equipment, loading, error, setEquipment } = useRoomData(selectedRoomId);
 
@@ -205,9 +207,100 @@ function App() {
     setAnnouncement('דו״ח בטיחות exportado exitosamente');
   };
 
-  const handleLoadFromJSON = async () => {
+  const loadHomeFromData = async (jsonData: any) => {
     try {
-      // Crear input de archivo
+      // Detectar formato: nuevo (con id, name directamente) o antiguo (con property)
+      let propertyData: { name: string; view_box: string };
+      let roomsData: any[];
+
+      if (jsonData.id && jsonData.name && jsonData.rooms) {
+        // Formato nuevo: datos directamente en el objeto raíz
+        propertyData = {
+          name: jsonData.name,
+          view_box: jsonData.view_box || '0 0 100 100'
+        };
+        roomsData = jsonData.rooms;
+      } else if (jsonData.property && jsonData.rooms) {
+        // Formato antiguo: datos dentro de property
+        propertyData = {
+          name: jsonData.property.name,
+          view_box: jsonData.property.view_box || '0 0 100 100'
+        };
+        roomsData = jsonData.rooms;
+      } else {
+        throw new Error('Formato de JSON inválido. Debe contener property/name y rooms.');
+      }
+
+      // Crear la propiedad
+      const newProperty = await dataService.createProperty(propertyData);
+
+      // Crear las habitaciones y sus datos
+      for (const roomData of roomsData) {
+        const newRoom = await dataService.createRoom({
+          property_id: newProperty.id,
+          name: roomData.name,
+          svg_path: roomData.svg_path,
+          vertices: roomData.vertices,
+          wall_height: roomData.wall_height || 2.6
+        });
+
+        // Crear instalaciones
+        if (roomData.installations && Array.isArray(roomData.installations)) {
+          for (const installation of roomData.installations) {
+            await dataService.createInstallation({
+              room_id: newRoom.id,
+              type: installation.type as 'power_point' | 'door' | 'window',
+              position: installation.position,
+              subtype: installation.subtype || ''
+            });
+          }
+        }
+
+        // Crear equipos médicos
+        if (roomData.equipment && Array.isArray(roomData.equipment)) {
+          for (const equipment of roomData.equipment) {
+            await dataService.createMedicalEquipment({
+              room_id: newRoom.id,
+              name: equipment.name,
+              type: equipment.type,
+              position: equipment.position,
+              rotation: equipment.rotation || { x: 0, y: 0, z: 0 },
+              dimensions: equipment.dimensions
+            });
+          }
+        }
+      }
+
+      // Actualizar el estado con la nueva propiedad
+      const updatedProperty = await dataService.getProperty(newProperty.id);
+      const updatedRooms = await dataService.getRoomsByProperty(newProperty.id);
+
+      setProperty(updatedProperty);
+      setRooms(updatedRooms);
+      if (updatedRooms.length > 0) {
+        setSelectedRoomId(updatedRooms[0].id);
+      }
+
+      setShowHomeSelector(false);
+      setAnnouncement(`Propiedad "${newProperty.name}" cargada exitosamente`);
+    } catch (error: any) {
+      console.error('Error cargando casa:', error);
+      setAnnouncement(`Error al cargar casa: ${error.message}`);
+    }
+  };
+
+  const handleLoadFromJSON = async () => {
+    // Mostrar selector de casas disponibles
+    setShowHomeSelector(true);
+  };
+
+  const handleSelectHome = async (homeData: any) => {
+    await loadHomeFromData(homeData);
+  };
+
+  const handleLoadFromFile = async () => {
+    try {
+      // Crear input de archivo para cargar archivos externos
       const input = document.createElement('input');
       input.type = 'file';
       input.accept = '.json';
@@ -216,69 +309,9 @@ function App() {
         if (!file) return;
 
         try {
-          // Leer el archivo JSON
           const text = await file.text();
           const jsonData = JSON.parse(text);
-
-          // Validar estructura básica
-          if (!jsonData.property || !jsonData.rooms || !Array.isArray(jsonData.rooms)) {
-            throw new Error('Formato de JSON inválido. Debe contener property y rooms.');
-          }
-
-          // Crear la propiedad
-          const newProperty = await dataService.createProperty({
-            name: jsonData.property.name,
-            view_box: jsonData.property.view_box || '0 0 100 100'
-          });
-
-          // Crear las habitaciones y sus datos
-          for (const roomData of jsonData.rooms) {
-            const newRoom = await dataService.createRoom({
-              property_id: newProperty.id,
-              name: roomData.name,
-              svg_path: roomData.svg_path,
-              vertices: roomData.vertices,
-              wall_height: roomData.wall_height || 2.6
-            });
-
-            // Crear instalaciones
-            if (roomData.installations && Array.isArray(roomData.installations)) {
-              for (const installation of roomData.installations) {
-                await dataService.createInstallation({
-                  room_id: newRoom.id,
-                  type: installation.type as 'power_point' | 'door' | 'window',
-                  position: installation.position,
-                  subtype: installation.subtype || ''
-                });
-              }
-            }
-
-            // Crear equipos médicos
-            if (roomData.equipment && Array.isArray(roomData.equipment)) {
-              for (const equipment of roomData.equipment) {
-                await dataService.createMedicalEquipment({
-                  room_id: newRoom.id,
-                  name: equipment.name,
-                  type: equipment.type,
-                  position: equipment.position,
-                  rotation: equipment.rotation || { x: 0, y: 0, z: 0 },
-                  dimensions: equipment.dimensions
-                });
-              }
-            }
-          }
-
-          // Actualizar el estado con la nueva propiedad
-          const updatedProperty = await dataService.getProperty(newProperty.id);
-          const updatedRooms = await dataService.getRoomsByProperty(newProperty.id);
-
-          setProperty(updatedProperty);
-          setRooms(updatedRooms);
-          if (updatedRooms.length > 0) {
-            setSelectedRoomId(updatedRooms[0].id);
-          }
-
-          setAnnouncement(`Propiedad "${newProperty.name}" cargada exitosamente desde JSON`);
+          await loadHomeFromData(jsonData);
         } catch (error: any) {
           console.error('Error cargando JSON:', error);
           setAnnouncement(`Error al cargar JSON: ${error.message}`);
@@ -482,6 +515,15 @@ function App() {
             >
               <FolderOpen className="w-4 h-4" />
               פתח חדש
+            </button>
+            <button
+              onClick={handleLoadFromFile}
+              className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="Cargar desde archivo"
+              title="Cargar desde archivo JSON externo"
+            >
+              <FolderOpen className="w-4 h-4" />
+              Cargar Archivo
             </button>
             {room && (
               <button
@@ -788,8 +830,55 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Modal para seleccionar casa */}
+      {showHomeSelector && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <FolderOpen className="w-6 h-6 text-emerald-600" />
+                Seleccionar Casa/Establecimiento
+              </h2>
+              <button
+                onClick={() => setShowHomeSelector(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+                aria-label="Cerrar modal"
+              >
+                <X className="w-5 h-5 text-slate-600" />
+              </button>
+            </div>
+
+            <div className="p-6">
+              <p className="text-sm text-slate-600 mb-4">
+                Selecciona una casa o establecimiento médico para cargar:
+              </p>
+              <div className="space-y-2">
+                {availableHomes.map((home) => (
+                  <button
+                    key={home.id}
+                    onClick={() => handleSelectHome(home.data)}
+                    className="w-full p-4 text-left border border-slate-200 rounded-lg hover:border-emerald-500 hover:bg-emerald-50 transition-colors"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold text-slate-800">{home.name}</h3>
+                        <p className="text-sm text-slate-600 mt-1">
+                          {home.data.rooms?.length || 0} habitaciones
+                        </p>
+                      </div>
+                      <FolderOpen className="w-5 h-5 text-slate-400" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 export default App;
+

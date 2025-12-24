@@ -1,0 +1,232 @@
+{
+  "id": "residencia-geriatrica",
+  "name": "Residencia Geriátrica San José",
+  "view_box": "0 0 280 190",
+  "created_at": "2024-12-24T00:00:00.000Z",
+  "updated_at": "2024-12-24T00:00:00.000Z",
+  "rooms": [
+    {
+      "id": "room-habitacion-001",
+      "property_id": "residencia-geriatrica",
+      "name": "Habitación 101",
+      "svg_path": "M 15,15 L 65,15 L 65,55 L 15,55 Z",
+      "vertices": [
+        { "x": 15, "y": 15 },
+        { "x": 65, "y": 15 },
+        { "x": 65, "y": 55 },
+        { "x": 15, "y": 55 }
+      ],
+      "wall_height": 2.6,
+      "created_at": "2024-12-24T00:00:00.000Z",
+      "updated_at": "2024-12-24T00:00:00.000Z",
+      "installations": [
+        {
+          "id": "inst-door-hab-001",
+          "room_id": "room-habitacion-001",
+          "type": "door",
+          "position": { "start": { "x": 35, "y": 55 }, "end": { "x": 45, "y": 55 } },
+          "subtype": "hinged",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-window-hab-001",
+          "room_id": "room-habitacion-001",
+          "type": "window",
+          "position": { "start": { "x": 20, "y": 15 }, "end": { "x": 50, "y": 15 } },
+          "subtype": "casement",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-power-hab-001",
+          "room_id": "room-habitacion-001",
+          "type": "power_point",
+          "position": { "x": 20, "y": 0.3, "z": 25 },
+          "subtype": "wall-mounted",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-power-hab-002",
+          "room_id": "room-habitacion-001",
+          "type": "power_point",
+          "position": { "x": 60, "y": 0.3, "z": 25 },
+          "subtype": "wall-mounted",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        }
+      ],
+      "equipment": [
+        {
+          "id": "eq-bed-hab-001",
+          "room_id": "room-habitacion-001",
+          "name": "Cama Hospitalaria",
+          "type": "bed",
+          "position": { "x": 40, "y": 0, "z": 35 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 2.1, "height": 0.9, "depth": 1.0 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "eq-silla-hab-001",
+          "room_id": "room-habitacion-001",
+          "name": "Silla de Ruedas",
+          "type": "wheelchair",
+          "position": { "x": 20, "y": 0, "z": 45 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 0.7, "height": 1.0, "depth": 1.0 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "eq-oxigeno-hab-001",
+          "room_id": "room-habitacion-001",
+          "name": "Tanque de Oxígeno",
+          "type": "oxygen",
+          "position": { "x": 55, "y": 0, "z": 25 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 0.3, "height": 1.4, "depth": 0.3 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "room-habitacion-002",
+      "property_id": "residencia-geriatrica",
+      "name": "Habitación 102",
+      "svg_path": "M 75,15 L 125,15 L 125,55 L 75,55 Z",
+      "vertices": [
+        { "x": 75, "y": 15 },
+        { "x": 125, "y": 15 },
+        { "x": 125, "y": 55 },
+        { "x": 75, "y": 55 }
+      ],
+      "wall_height": 2.6,
+      "created_at": "2024-12-24T00:00:00.000Z",
+      "updated_at": "2024-12-24T00:00:00.000Z",
+      "installations": [
+        {
+          "id": "inst-door-hab-002",
+          "room_id": "room-habitacion-002",
+          "type": "door",
+          "position": { "start": { "x": 95, "y": 55 }, "end": { "x": 105, "y": 55 } },
+          "subtype": "hinged",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-window-hab-002",
+          "room_id": "room-habitacion-002",
+          "type": "window",
+          "position": { "start": { "x": 80, "y": 15 }, "end": { "x": 110, "y": 15 } },
+          "subtype": "casement",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-power-hab-003",
+          "room_id": "room-habitacion-002",
+          "type": "power_point",
+          "position": { "x": 80, "y": 0.3, "z": 25 },
+          "subtype": "wall-mounted",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        }
+      ],
+      "equipment": [
+        {
+          "id": "eq-bed-hab-002",
+          "room_id": "room-habitacion-002",
+          "name": "Cama Hospitalaria",
+          "type": "bed",
+          "position": { "x": 100, "y": 0, "z": 35 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 2.1, "height": 0.9, "depth": 1.0 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "eq-monitor-hab-002",
+          "room_id": "room-habitacion-002",
+          "name": "Monitor Signos Vitales",
+          "type": "monitor",
+          "position": { "x": 85, "y": 0, "z": 25 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 0.4, "height": 1.2, "depth": 0.4 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "room-sala-comun-001",
+      "property_id": "residencia-geriatrica",
+      "name": "Sala Común",
+      "svg_path": "M 135,15 L 220,15 L 220,80 L 135,80 Z",
+      "vertices": [
+        { "x": 135, "y": 15 },
+        { "x": 220, "y": 15 },
+        { "x": 220, "y": 80 },
+        { "x": 135, "y": 80 }
+      ],
+      "wall_height": 2.8,
+      "created_at": "2024-12-24T00:00:00.000Z",
+      "updated_at": "2024-12-24T00:00:00.000Z",
+      "installations": [
+        {
+          "id": "inst-door-comun-001",
+          "room_id": "room-sala-comun-001",
+          "type": "door",
+          "position": { "start": { "x": 170, "y": 80 }, "end": { "x": 185, "y": 80 } },
+          "subtype": "sliding",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-window-comun-001",
+          "room_id": "room-sala-comun-001",
+          "type": "window",
+          "position": { "start": { "x": 140, "y": 15 }, "end": { "x": 200, "y": 15 } },
+          "subtype": "sliding",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-power-comun-001",
+          "room_id": "room-sala-comun-001",
+          "type": "power_point",
+          "position": { "x": 145, "y": 0.3, "z": 30 },
+          "subtype": "wall-mounted",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "inst-power-comun-002",
+          "room_id": "room-sala-comun-001",
+          "type": "power_point",
+          "position": { "x": 215, "y": 0.3, "z": 30 },
+          "subtype": "wall-mounted",
+          "created_at": "2024-12-24T00:00:00.000Z"
+        }
+      ],
+      "equipment": [
+        {
+          "id": "eq-sillas-comun-001",
+          "room_id": "room-sala-comun-001",
+          "name": "Sillas de Ruedas (2)",
+          "type": "wheelchair",
+          "position": { "x": 160, "y": 0, "z": 50 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 0.7, "height": 1.0, "depth": 1.0 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        },
+        {
+          "id": "eq-mesa-comun-001",
+          "room_id": "room-sala-comun-001",
+          "name": "Mesa Central",
+          "type": "table",
+          "position": { "x": 177, "y": 0, "z": 50 },
+          "rotation": { "x": 0, "y": 0, "z": 0 },
+          "dimensions": { "width": 2.0, "height": 0.75, "depth": 1.0 },
+          "created_at": "2024-12-24T00:00:00.000Z",
+          "updated_at": "2024-12-24T00:00:00.000Z"
+        }
+      ]
+    }
+  ]
+}
+
