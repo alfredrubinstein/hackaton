@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen, Ruler } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen, Ruler, Bot } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -11,6 +11,7 @@ import { PhotoUploader } from './components/PhotoUploader';
 import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
 import { RCCarControlPanel } from '../project/rc/components/RCCarControlPanel';
 import { MeasurementTool } from './components/MeasurementTool';
+import { RobotMeasurementView } from './components/RobotMeasurementView';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
 import { visionService } from './services/visionService';
@@ -48,12 +49,14 @@ function App() {
     showHomeSelector,
     showRCCarPanel,
     showMeasurementTool,
+    showRobotMeasurement,
     cameraEnabled,
     setViewMode,
     toggleHelp,
     setShowPhotoModal,
     setShowHomeSelector,
     setShowMeasurementTool,
+    setShowRobotMeasurement,
   } = useUIStore();
 
   // Equipment Store
@@ -446,6 +449,14 @@ function App() {
               <FolderOpen className="w-4 h-4" />
               פתח חדש
             </button>
+            <button
+              onClick={() => setShowRobotMeasurement(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="מדידה ברובוט"
+            >
+              <Bot className="w-4 h-4" />
+              מדידה ברובוט
+            </button>
             {room && (
               <button
                 onClick={handleExportSecurityReport}
@@ -802,6 +813,12 @@ function App() {
       <MeasurementTool
         isOpen={showMeasurementTool}
         onClose={() => setShowMeasurementTool(false)}
+      />
+
+      {/* Modal para medición con robot */}
+      <RobotMeasurementView
+        isOpen={showRobotMeasurement}
+        onClose={() => setShowRobotMeasurement(false)}
       />
     </div>
   );

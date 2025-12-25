@@ -57,11 +57,11 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   const [calibrationHeight, setCalibrationHeight] = useState('');
   const [hasImage, setHasImage] = useState(false);
   
-  // Medidas estándar de tarjeta de crédito (en cm)
-  const CREDIT_CARD_WIDTH = 8.56;  // Ancho estándar
-  const CREDIT_CARD_HEIGHT = 5.398; // Alto estándar
+  // Medidas estándar de hoja A4 horizontal (en cm)
+  const CREDIT_CARD_WIDTH = 29.7;  // Ancho A4 horizontal
+  const CREDIT_CARD_HEIGHT = 21; // Alto A4 horizontal
 
-  // Estados para la tarjeta de crédito interactiva
+  // Estados para la hoja A4 interactiva
   const [controlMode, setControlMode] = useState<ControlMode>('none');
   const [showCreditCard, setShowCreditCard] = useState(false);
   const [creditCardTransform, setCreditCardTransform] = useState<CreditCardTransform>({
@@ -71,8 +71,8 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     rotationY: 0,
     rotationZ: 0,
     scale: 1,
-    width: 200, // Tamaño inicial en píxeles
-    height: 126, // Proporción de tarjeta de crédito
+    width: 297, // Tamaño inicial en píxeles (proporción A4 horizontal)
+    height: 210, // Proporción A4 horizontal
   });
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: CreditCardTransform } | null>(null);
@@ -251,7 +251,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         
         imgOriginalRef.current = imgOrig;
         imgMainRef.current = imgM;
-        setStatus('מוכן. בחר 4 נקודות לכיול או presiona C para usar tarjeta de crédito.');
+        setStatus('מוכן. בחר 4 נקודות לכיול ou presiona C para usar hoja A4.');
         setIsCalibrated(false);
         setRefPoints([]);
         setMeasurementPoints([]);
@@ -259,7 +259,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         setHasImage(true);
         setShowCreditCard(false);
         setControlMode('none');
-        // Inicializar posición de tarjeta en el centro
+        // Inicializar posición de hoja A4 en el centro
         setCreditCardTransform(prev => ({
           ...prev,
           x: canvas.width / 2,
@@ -320,7 +320,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     const cos = Math.cos(rotationZ);
     const sin = Math.sin(rotationZ);
 
-    // Esquinas de la tarjeta (relativas al centro)
+    // Esquinas de la hoja A4 (relativas al centro)
     const corners = [
       { x: -w, y: -h },
       { x: w, y: -h },
@@ -382,7 +382,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
           if (e.ctrlKey || e.metaKey) return; // No interferir con Ctrl+C
           e.preventDefault();
           if (showCreditCard) {
-            // Usar esquinas de la tarjeta como puntos de calibración
+            // Usar esquinas de la hoja A4 como puntos de calibración
             useCardCornersAsCalibration();
           } else {
             setShowCreditCard(true);
@@ -396,7 +396,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, hasImage, showCreditCard, controlMode, useCardCornersAsCalibration]);
 
-  // Inicializar posición de la tarjeta en el centro cuando se muestra por primera vez
+  // Inicializar posición de la hoja A4 en el centro cuando se muestra por primera vez
   useEffect(() => {
     if (showCreditCard && mainCanvasRef.current) {
       const canvas = mainCanvasRef.current;
@@ -496,7 +496,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     const corners = getCreditCardCorners();
     const cornerPoints = corners.map(p => new window.cv.Point(p.x, p.y));
 
-    // Dibujar la tarjeta como un rectángulo
+    // Dibujar la hoja A4 como un rectángulo
     const color = controlMode === 'none' 
       ? new window.cv.Scalar(0, 255, 0, 200) // Verde semi-transparente
       : new window.cv.Scalar(255, 165, 0, 200); // Naranja cuando está en modo de control
@@ -522,7 +522,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       );
     });
 
-    // Dibujar centro de la tarjeta
+    // Dibujar centro de la hoja A4
     window.cv.circle(
       imgMainRef.current,
       new window.cv.Point(creditCardTransform.x, creditCardTransform.y),
@@ -539,7 +539,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     imgMainRef.current.delete();
     imgMainRef.current = imgOriginalRef.current.clone();
 
-    // Dibujar tarjeta si está visible
+    // Dibujar hoja A4 si está visible
     if (showCreditCard) {
       drawCreditCard();
     }
@@ -595,7 +595,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         drawMarker(x, y, new window.cv.Scalar(0, 255, 0, 255), newPoints.length.toString());
         
         if (newPoints.length === 4) {
-          // Automáticamente calibrar con medidas de tarjeta de crédito
+          // Automáticamente calibrar con medidas de hoja A4 horizontal
           setTimeout(() => {
             autoCalibrateWithCreditCard(newPoints);
           }, 100);
@@ -631,7 +631,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       points.flatMap((p) => [p.x, p.y])
     );
     
-    // Usar medidas estándar de tarjeta de crédito
+    // Usar medidas estándar de hoja A4 horizontal
     const dstMat = window.cv.matFromArray(4, 1, window.cv.CV_32FC2, [
       0, 0,
       CREDIT_CARD_WIDTH, 0,
@@ -842,7 +842,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                             {controlMode === 'move' ? 'Mover (G)' :
                              controlMode === 'rotate' ? 'Rotar (R)' :
                              controlMode === 'scale' ? 'Escalar (S)' :
-                             'Tarjeta activa'}
+                             'Hoja A4 activa'}
                           </span>
                         </div>
                       )}
@@ -938,7 +938,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">2.</span>
-                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> para mostrar tarjeta de crédito</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> para mostrar hoja A4</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">3.</span>
@@ -946,7 +946,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">4.</span>
-                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> de nuevo para usar las esquinas de la tarjeta como calibración</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> de nuevo para usar las esquinas de la hoja A4 como calibración</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">5.</span>
@@ -980,7 +980,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     {showCreditCard && (
                       <>
                         <div className="border-t border-slate-200 pt-2 mt-2">
-                          <div className="text-xs font-semibold text-slate-500 mb-1">Tarjeta de Crédito</div>
+                          <div className="text-xs font-semibold text-slate-500 mb-1">Hoja A4 Horizontal</div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-600">Escala:</span>
                             <span className="font-semibold text-slate-800">
@@ -999,12 +999,12 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                   </div>
                 </div>
 
-                {/* Controles de tarjeta */}
+                {/* Controles de hoja A4 */}
                 {hasImage && (
                   <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
                     <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
                       <CreditCard className="w-4 h-4 text-emerald-600" />
-                      Controles de Tarjeta
+                      Controles de Hoja A4
                     </h3>
                     <div className="space-y-2">
                       <button
@@ -1019,7 +1019,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                             : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
                         }`}
                       >
-                        {showCreditCard ? 'Ocultar Tarjeta' : 'Mostrar Tarjeta (C)'}
+                        {showCreditCard ? 'Ocultar Hoja A4' : 'Mostrar Hoja A4 (C)'}
                       </button>
                       {showCreditCard && (
                         <div className="grid grid-cols-3 gap-2">
