@@ -25,8 +25,8 @@ export function RoomAnalysisPreview({
     return (
       <div className="p-6 text-center">
         <Loader2 className="w-12 h-12 text-emerald-600 animate-spin mx-auto mb-4" />
-        <p className="text-slate-600">Analizando fotos con IA...</p>
-        <p className="text-sm text-slate-500 mt-2">Esto puede tomar unos momentos</p>
+        <p className="text-slate-600">מנתח תמונות עם AI...</p>
+        <p className="text-sm text-slate-500 mt-2">זה עלול לקחת כמה רגעים</p>
       </div>
     );
   }
@@ -37,7 +37,7 @@ export function RoomAnalysisPreview({
         <div className="bg-red-50 border border-red-200 rounded-lg p-4 flex items-start gap-3">
           <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
           <div className="flex-1">
-            <h3 className="font-semibold text-red-800 mb-1">Error en el análisis</h3>
+            <h3 className="font-semibold text-red-800 mb-1">שגיאה בניתוח</h3>
             <p className="text-sm text-red-700">{analysisError}</p>
           </div>
         </div>
@@ -45,7 +45,7 @@ export function RoomAnalysisPreview({
           onClick={onCancel}
           className="mt-4 w-full px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
         >
-          Cerrar
+          סגור
         </button>
       </div>
     );
@@ -91,12 +91,12 @@ export function RoomAnalysisPreview({
       {/* Información general */}
       <div className="bg-slate-50 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="font-semibold text-slate-800">Información de la Habitación</h3>
+          <h3 className="font-semibold text-slate-800">מידע על החדר</h3>
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
               className="p-1.5 text-slate-600 hover:text-slate-800 hover:bg-slate-200 rounded"
-              aria-label="Editar"
+              aria-label="ערוך"
             >
               <Edit2 className="w-4 h-4" />
             </button>
@@ -105,7 +105,7 @@ export function RoomAnalysisPreview({
 
         <div className="space-y-2">
           <div>
-            <label className="text-sm text-slate-600">Nombre</label>
+            <label className="text-sm text-slate-600">שם</label>
             {isEditing ? (
               <input
                 type="text"
@@ -119,7 +119,7 @@ export function RoomAnalysisPreview({
           </div>
 
           <div>
-            <label className="text-sm text-slate-600">Altura de Paredes (m)</label>
+            <label className="text-sm text-slate-600">גובה קירות (מ')</label>
             {isEditing ? (
               <input
                 type="number"
@@ -143,14 +143,14 @@ export function RoomAnalysisPreview({
               className="flex-1 px-3 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
-              Guardar
+              שמור
             </button>
             <button
               onClick={handleCancelEdit}
               className="flex-1 px-3 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 flex items-center justify-center gap-2"
             >
               <X className="w-4 h-4" />
-              Cancelar
+              ביטול
             </button>
           </div>
         )}
@@ -160,7 +160,7 @@ export function RoomAnalysisPreview({
       <div className="bg-slate-50 rounded-lg p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-semibold text-slate-800">
-            Vértices ({editedData.vertices.length} puntos)
+            קודקודים ({editedData.vertices.length} נקודות)
           </h3>
         </div>
 
@@ -201,7 +201,7 @@ export function RoomAnalysisPreview({
       {/* Instalaciones */}
       <div className="bg-slate-50 rounded-lg p-4">
         <h3 className="font-semibold text-slate-800 mb-3">
-          Instalaciones Detectadas ({editedData.installations.length})
+          התקנות שזוהו ({editedData.installations.length})
         </h3>
         {editedData.installations.length > 0 ? (
           <div className="space-y-2">
@@ -213,9 +213,9 @@ export function RoomAnalysisPreview({
                     inst.type === 'window' ? 'bg-blue-100 text-blue-800' :
                     'bg-yellow-100 text-yellow-800'
                   }`}>
-                    {inst.type === 'door' ? 'Puerta' :
-                     inst.type === 'window' ? 'Ventana' :
-                     'Punto de Energía'}
+                    {inst.type === 'door' ? 'דלת' :
+                     inst.type === 'window' ? 'חלון' :
+                     'נקודת חשמל'}
                   </span>
                   <span className="text-slate-600">{inst.subtype}</span>
                 </div>
@@ -223,7 +223,7 @@ export function RoomAnalysisPreview({
             ))}
           </div>
         ) : (
-          <p className="text-sm text-slate-500">No se detectaron instalaciones</p>
+          <p className="text-sm text-slate-500">לא זוהו התקנות</p>
         )}
       </div>
 
@@ -234,13 +234,13 @@ export function RoomAnalysisPreview({
           className="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center justify-center gap-2 font-medium"
         >
           <Check className="w-5 h-5" />
-          Crear Habitación
+          צור חדר
         </button>
         <button
           onClick={onCancel}
           className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
         >
-          Cancelar
+          ביטול
         </button>
       </div>
     </div>

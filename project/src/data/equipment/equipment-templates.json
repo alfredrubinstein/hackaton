@@ -1,108 +1,108 @@
 [
   {
     "id": "bed-hospital",
-    "name": "Cama Hospitalaria",
+    "name": "מיטת בית חולים",
     "type": "bed",
-    "category": "Mobiliario",
+    "category": "ריהוט",
     "defaultDimensions": { "width": 2.1, "height": 0.9, "depth": 1.0 },
     "icon": "🛏️",
     "color": "#3b82f6"
   },
   {
     "id": "monitor-vital-signs",
-    "name": "Monitor de Signos Vitales",
+    "name": "מוניטור סימנים חיוניים",
     "type": "monitor",
-    "category": "Monitoreo",
+    "category": "ניטור",
     "defaultDimensions": { "width": 0.4, "height": 1.2, "depth": 0.4 },
     "icon": "📊",
     "color": "#10b981"
   },
   {
     "id": "ventilator",
-    "name": "Ventilador Mecánico",
+    "name": "מנשם מכני",
     "type": "ventilator",
-    "category": "Soporte Vital",
+    "category": "תמיכה בחיים",
     "defaultDimensions": { "width": 0.5, "height": 1.3, "depth": 0.6 },
     "icon": "🌬️",
     "color": "#8b5cf6"
   },
   {
     "id": "infusion-pump",
-    "name": "Bomba de Infusión",
+    "name": "משאבת עירוי",
     "type": "pump",
-    "category": "Administración",
+    "category": "מתן תרופות",
     "defaultDimensions": { "width": 0.3, "height": 0.4, "depth": 0.2 },
     "icon": "💉",
     "color": "#ec4899"
   },
   {
     "id": "ultrasound",
-    "name": "Ecógrafo",
+    "name": "מכשיר אולטרסאונד",
     "type": "scanner",
-    "category": "Diagnóstico",
+    "category": "אבחון",
     "defaultDimensions": { "width": 0.6, "height": 1.4, "depth": 0.7 },
     "icon": "🔬",
     "color": "#f59e0b"
   },
   {
     "id": "xray-portable",
-    "name": "Rayos X Portátil",
+    "name": "צילום רנטגן נייד",
     "type": "xray",
-    "category": "Diagnóstico",
+    "category": "אבחון",
     "defaultDimensions": { "width": 0.8, "height": 1.6, "depth": 0.8 },
     "icon": "📷",
     "color": "#6366f1"
   },
   {
     "id": "defibrillator",
-    "name": "Desfibrilador",
+    "name": "דפיברילטור",
     "type": "defibrillator",
-    "category": "Emergencia",
+    "category": "חירום",
     "defaultDimensions": { "width": 0.4, "height": 1.0, "depth": 0.4 },
     "icon": "⚡",
     "color": "#ef4444"
   },
   {
     "id": "medical-cart",
-    "name": "Carro de Curaciones",
+    "name": "עגלת טיפול",
     "type": "cart",
-    "category": "Mobiliario",
+    "category": "ריהוט",
     "defaultDimensions": { "width": 0.6, "height": 1.0, "depth": 0.5 },
     "icon": "🛒",
     "color": "#14b8a6"
   },
   {
     "id": "oxygen-tank",
-    "name": "Tanque de Oxígeno",
+    "name": "מיכל חמצן",
     "type": "oxygen",
-    "category": "Suministros",
+    "category": "אספקה",
     "defaultDimensions": { "width": 0.3, "height": 1.4, "depth": 0.3 },
     "icon": "🫁",
     "color": "#06b6d4"
   },
   {
     "id": "dialysis-machine",
-    "name": "Máquina de Diálisis",
+    "name": "מכונת דיאליזה",
     "type": "dialysis",
-    "category": "Tratamiento",
+    "category": "טיפול",
     "defaultDimensions": { "width": 0.7, "height": 1.5, "depth": 0.7 },
     "icon": "⚕️",
     "color": "#a855f7"
   },
   {
     "id": "wheelchair",
-    "name": "Silla de Ruedas",
+    "name": "כיסא גלגלים",
     "type": "wheelchair",
-    "category": "Movilidad",
+    "category": "ניידות",
     "defaultDimensions": { "width": 0.7, "height": 1.0, "depth": 1.0 },
     "icon": "♿",
     "color": "#84cc16"
   },
   {
     "id": "exam-table",
-    "name": "Camilla de Examen",
+    "name": "מיטת בדיקה",
     "type": "table",
-    "category": "Mobiliario",
+    "category": "ריהוט",
     "defaultDimensions": { "width": 1.8, "height": 0.8, "depth": 0.7 },
     "icon": "🛋️",
     "color": "#22d3ee"

@@ -21,3 +21,8 @@ dist-ssr
 *.sln
 *.sw?
 .env
+
+# Ignorar todos los archivos .md excepto README.md y readme.md
+*.md
+!README.md
+!readme.md

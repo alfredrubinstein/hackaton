@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
@@ -7,81 +7,92 @@ import { PositionPanel } from './components/PositionPanel';
 import { EquipmentCatalog } from './components/EquipmentCatalog';
 import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
-import { PhotoUploader, type PhotoFile } from './components/PhotoUploader';
+import { PhotoUploader } from './components/PhotoUploader';
 import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
 import { RCCarControlPanel } from '../rc/components/RCCarControlPanel';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
-import { initializeSampleData } from './utils/sampleData';
 import { visionService } from './services/visionService';
-import { roomGeneratorService, type GeneratedRoomData } from './services/roomGeneratorService';
+import { roomGeneratorService } from './services/roomGeneratorService';
 import { availableHomes } from './data/homes/index';
-import type { Room, Property, MedicalEquipment, Position3D, Installation } from './types';
+import type { Room, MedicalEquipment, Position3D, Installation } from './types';
+import { usePropertyStore } from './stores/propertyStore';
+import { useUIStore } from './stores/uiStore';
+import { useEquipmentStore } from './stores/equipmentStore';
+import { useNotificationStore } from './stores/notificationStore';
+import { usePhotoStore } from './stores/photoStore';
 
 function App() {
-  const [property, setProperty] = useState<Property | null>(null);
-  const [rooms, setRooms] = useState<Room[]>([]);
-  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(null);
-  const [announcement, setAnnouncement] = useState('');
-  const [isInitializing, setIsInitializing] = useState(true);
-  const [draggingEquipment, setDraggingEquipment] = useState<any>(null);
-  const [selectedEquipmentId, setSelectedEquipmentId] = useState<string | null>(null);
-  const [cameraEnabled, setCameraEnabled] = useState(false);
-  const [initError, setInitError] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<'2d' | '3d'>('3d');
-  const [showLeftPanel, setShowLeftPanel] = useState(true);
-  const [showRightPanel, setShowRightPanel] = useState(true);
-  const [showHelp, setShowHelp] = useState(false);
-  const [showPhotoModal, setShowPhotoModal] = useState(false);
-  const [uploadedPhotos, setUploadedPhotos] = useState<PhotoFile[]>([]);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [generatedRoomData, setGeneratedRoomData] = useState<GeneratedRoomData | null>(null);
-  const [analysisError, setAnalysisError] = useState<string | null>(null);
-  const [showRCCarPanel, setShowRCCarPanel] = useState(false);
-  const [showHomeSelector, setShowHomeSelector] = useState(false);
+  // Property Store
+  const {
+    property,
+    rooms,
+    selectedRoomId,
+    isInitializing,
+    initError,
+    initialize,
+    loadHomeFromData,
+    selectRoom,
+    updateRooms,
+  } = usePropertyStore();
+
+  // UI Store
+  const {
+    viewMode,
+    showLeftPanel,
+    showRightPanel,
+    showHelp,
+    showPhotoModal,
+    showHomeSelector,
+    showRCCarPanel,
+    cameraEnabled,
+    setViewMode,
+    toggleHelp,
+    setShowPhotoModal,
+    setShowHomeSelector,
+    setShowRCCarPanel,
+  } = useUIStore();
+
+  // Equipment Store
+  const {
+    selectedEquipmentId,
+    draggingEquipment,
+    selectEquipment,
+    setDraggingEquipment,
+    clearSelection,
+  } = useEquipmentStore();
+
+  // Notification Store
+  const { announcement, setAnnouncement } = useNotificationStore();
+
+  // Photo Store
+  const {
+    uploadedPhotos,
+    isAnalyzing,
+    generatedRoomData,
+    analysisError,
+    setPhotos,
+    setAnalyzing,
+    setGeneratedData,
+    setAnalysisError,
+    clear: clearPhotoStore,
+  } = usePhotoStore();
 
   const { room, installations, equipment, loading, error, setEquipment } = useRoomData(selectedRoomId);
 
   useEffect(() => {
-    const initialize = async () => {
-      try {
-        console.log('Initializing sample data...');
-        const propertyId = await initializeSampleData();
-        console.log('Property created:', propertyId);
-
-        const propertyData = await dataService.getProperty(propertyId);
-        console.log('Property data:', propertyData);
-
-        const roomsData = await dataService.getRoomsByProperty(propertyId);
-        console.log('Rooms data:', roomsData);
-
-        setProperty(propertyData);
-        setRooms(roomsData);
-        if (roomsData.length > 0) {
-          setSelectedRoomId(roomsData[0].id);
-        }
-      } catch (err: any) {
-        console.error('Error initializing app:', err);
-        console.error('Error details:', err.message, err.details);
-        setInitError(err.message || 'Error desconocido');
-        setAnnouncement('Error al inicializar. Intenta recargar la página con Ctrl+Shift+R');
-      } finally {
-        setIsInitializing(false);
-      }
-    };
-
     initialize();
-  }, []);
+  }, [initialize]);
 
 
   const handleAddEquipment = async (newEquipment: Omit<MedicalEquipment, 'id' | 'created_at' | 'updated_at'>) => {
     try {
       const created = await dataService.createMedicalEquipment(newEquipment);
       setEquipment(prev => [...prev, created]);
-      setAnnouncement(`Equipo agregado: ${created.name} en posición ${created.position.x.toFixed(1)}, ${created.position.z.toFixed(1)}`);
+      setAnnouncement(`ציוד נוסף: ${created.name} במיקום ${created.position.x.toFixed(1)}, ${created.position.z.toFixed(1)}`);
     } catch (err) {
       console.error('Error adding equipment:', err);
-      setAnnouncement('Error al agregar equipo médico');
+      setAnnouncement('שגיאה בהוספת ציוד רפואי');
     }
   };
 
@@ -89,10 +100,10 @@ function App() {
     try {
       const updated = await dataService.updateMedicalEquipment(id, updates);
       setEquipment(prev => prev.map(eq => eq.id === id ? updated : eq));
-      setAnnouncement(`Equipo actualizado: ${updated.name}`);
+      setAnnouncement(`ציוד עודכן: ${updated.name}`);
     } catch (err) {
       console.error('Error updating equipment:', err);
-      setAnnouncement('Error al actualizar equipo médico');
+      setAnnouncement('שגיאה בעדכון ציוד רפואי');
     }
   };
 
@@ -104,10 +115,10 @@ function App() {
     try {
       await dataService.deleteMedicalEquipment(id);
       setEquipment(prev => prev.filter(eq => eq.id !== id));
-      setAnnouncement('Equipo médico eliminado');
+      setAnnouncement('ציוד רפואי נמחק');
     } catch (err) {
       console.error('Error deleting equipment:', err);
-      setAnnouncement('Error al eliminar equipo médico');
+      setAnnouncement('שגיאה במחיקת ציוד רפואי');
     }
   };
 
@@ -204,7 +215,7 @@ function App() {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    setAnnouncement('דו״ח בטיחות exportado exitosamente');
+    setAnnouncement('דו״ח בטיחות יוצא בהצלחה');
   };
 
   const loadHomeFromData = async (jsonData: any) => {
@@ -228,7 +239,7 @@ function App() {
         };
         roomsData = jsonData.rooms;
       } else {
-        throw new Error('Formato de JSON inválido. Debe contener property/name y rooms.');
+        throw new Error('פורמט JSON לא תקין. חייב להכיל property/name ו-rooms.');
       }
 
       // Crear la propiedad
@@ -285,7 +296,7 @@ function App() {
       setAnnouncement(`Propiedad "${newProperty.name}" cargada exitosamente`);
     } catch (error: any) {
       console.error('Error cargando casa:', error);
-      setAnnouncement(`Error al cargar casa: ${error.message}`);
+      setAnnouncement(`שגיאה בטעינת בית: ${error.message}`);
     }
   };
 
@@ -298,31 +309,6 @@ function App() {
     await loadHomeFromData(homeData);
   };
 
-  const handleLoadFromFile = async () => {
-    try {
-      // Crear input de archivo para cargar archivos externos
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.json';
-      input.onchange = async (e) => {
-        const file = (e.target as HTMLInputElement).files?.[0];
-        if (!file) return;
-
-        try {
-          const text = await file.text();
-          const jsonData = JSON.parse(text);
-          await loadHomeFromData(jsonData);
-        } catch (error: any) {
-          console.error('Error cargando JSON:', error);
-          setAnnouncement(`Error al cargar JSON: ${error.message}`);
-        }
-      };
-      input.click();
-    } catch (error: any) {
-      console.error('Error abriendo explorador de archivos:', error);
-      setAnnouncement('Error al abrir explorador de archivos');
-    }
-  };
 
   const handlePhotosChange = (photos: PhotoFile[]) => {
     setUploadedPhotos(photos);
@@ -365,7 +351,7 @@ function App() {
       // Generar datos de habitación
       const roomData = roomGeneratorService.generateRoomFromAnalysis(
         analysis,
-        `Habitación desde Foto ${new Date().toLocaleDateString()}`
+        `חדר מתמונה ${new Date().toLocaleDateString('he-IL')}`
       );
 
       setGeneratedRoomData(roomData);
@@ -413,10 +399,10 @@ function App() {
       setUploadedPhotos([]);
       setGeneratedRoomData(null);
       setAnalysisError(null);
-      setAnnouncement(`Habitación "${roomData.name}" creada exitosamente desde fotos`);
+      setAnnouncement(`חדר "${roomData.name}" נוצר בהצלחה מתמונות`);
     } catch (err: any) {
       console.error('Error creando habitación:', err);
-      setAnalysisError(`Error al crear la habitación: ${err.message}`);
+      setAnalysisError(`שגיאה ביצירת החדר: ${err.message}`);
     }
   };
 
@@ -445,13 +431,13 @@ function App() {
         <div className="bg-white rounded-lg shadow-xl p-8 max-w-2xl">
           <div className="text-red-600 text-6xl mb-4 text-center">⚠️</div>
           <h1 className="text-2xl font-bold text-slate-800 mb-4 text-center">
-            Error de Inicialización
+            שגיאת אתחול
           </h1>
           <p className="text-slate-600 mb-4">
-            Hubo un problema al conectar con la base de datos. Por favor, intenta lo siguiente:
+            הייתה בעיה בחיבור למסד הנתונים. אנא נסה את הדברים הבאים:
           </p>
           <ol className="list-decimal list-inside space-y-2 text-slate-600 mb-6">
-            <li>Recarga la página completamente (presiona Ctrl+Shift+R o Cmd+Shift+R)</li>
+            <li>רענן את הדף לחלוטין (לחץ Ctrl+Shift+R או Cmd+Shift+R)</li>
             <li>Limpia el caché del navegador</li>
             <li>Verifica que tienes conexión a internet</li>
           </ol>
@@ -483,7 +469,7 @@ function App() {
                 Care In Every Home
               </h1>
               <p className="text-xs text-slate-600">
-                {property?.name || 'Sistema de Gestión de Espacios Médicos'}
+                {property?.name || 'מערכת ניהול מרחבים רפואיים'}
               </p>
             </div>
           </div>
@@ -491,7 +477,7 @@ function App() {
             <button
               onClick={() => setShowHelp(!showHelp)}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-              aria-label="Toggle ayuda"
+              aria-label="החלף עזרה"
             >
               <HelpCircle className="w-5 h-5 text-slate-700" />
             </button>
@@ -516,20 +502,11 @@ function App() {
               <FolderOpen className="w-4 h-4" />
               פתח חדש
             </button>
-            <button
-              onClick={handleLoadFromFile}
-              className="px-4 py-2 bg-slate-600 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-              aria-label="Cargar desde archivo"
-              title="Cargar desde archivo JSON externo"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Cargar Archivo
-            </button>
             {room && (
               <button
                 onClick={handleExportSecurityReport}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                aria-label="Exportar דו״ח de seguridad y consejos"
+                aria-label="ייצא דו״ח בטיחות ועצות"
               >
                 <FileText className="w-4 h-4" />
                 <span>דו״ח בטיחות</span>
@@ -547,7 +524,7 @@ function App() {
           <div className="w-64 flex-shrink-0 flex flex-col gap-2 overflow-hidden">
             {showRCCarPanel && (
               <CollapsiblePanel
-                title="Control Coches RC"
+                title="בקרת מכוניות RC"
                 icon={<Package className="w-4 h-4 text-slate-700" />}
                 defaultExpanded={true}
                 className="flex-shrink-0"
@@ -568,7 +545,7 @@ function App() {
                       const updatedRooms = await dataService.getRoomsByProperty(property.id);
                       setRooms(updatedRooms);
                       setSelectedRoomId(newRoom.id);
-                      setAnnouncement(`Habitación "${mapData.name}" creada desde mapeo RC`);
+                      setAnnouncement(`חדר "${mapData.name}" נוצר ממיפוי RC`);
                     } catch (err: any) {
                       console.error('Error creando habitación desde mapa:', err);
                       setAnnouncement(`Error: ${err.message}`);
@@ -579,7 +556,7 @@ function App() {
               </CollapsiblePanel>
             )}
             <CollapsiblePanel
-              title="Catálogo de Equipos"
+              title="קטלוג ציוד"
               icon={<Package className="w-4 h-4 text-slate-700" />}
               defaultExpanded={true}
               className="flex-1 flex flex-col min-h-0"
@@ -597,12 +574,12 @@ function App() {
             <div className="p-3 border-b border-slate-200 bg-slate-50 flex items-center justify-between flex-shrink-0">
               <div>
                 <h2 className="text-base font-semibold text-slate-800">
-                  {viewMode === '3d' ? 'Vista 3D' : 'Vista 2D'}: {room?.name || 'Seleccione una habitación'}
+                  {viewMode === '3d' ? 'תצוגה תלת-ממדית' : 'תצוגה דו-ממדית'}: {room?.name || 'בחר חדר'}
                 </h2>
                 <p className="text-xs text-slate-600 mt-0.5">
                   {room && (
                     <>
-                      {installations.length} instalaciones • {equipment.length} equipos
+                      {installations.length} התקנות • {equipment.length} ציוד
                     </>
                   )}
                 </p>
@@ -611,7 +588,7 @@ function App() {
                 <button
                   onClick={() => setViewMode(viewMode === '3d' ? '2d' : '3d')}
                   className="px-3 py-1.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg transition-colors flex items-center gap-2 text-xs font-medium"
-                  aria-label={`Cambiar a vista ${viewMode === '3d' ? '2D' : '3D'}`}
+                  aria-label={`החלף לתצוגה ${viewMode === '3d' ? 'דו-ממדית' : 'תלת-ממדית'}`}
                 >
                   <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     {viewMode === '3d' ? (
@@ -633,7 +610,7 @@ function App() {
               )}
               {error && (
                 <div className="h-full flex items-center justify-center">
-                  <p className="text-red-600">Error: {error}</p>
+                  <p className="text-red-600">שגיאה: {error}</p>
                 </div>
               )}
               {room && !loading && !error && (
@@ -671,38 +648,38 @@ function App() {
           {/* Guía de uso colapsable */}
           {showHelp && (
             <CollapsiblePanel
-              title="Guía de Uso"
+              title="מדריך שימוש"
               defaultExpanded={true}
               icon={<HelpCircle className="w-4 h-4 text-slate-700" />}
             >
               <div className="p-3 space-y-3">
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-700 mb-1">Vista 3D:</h4>
+                  <h4 className="text-xs font-semibold text-slate-700 mb-1">תצוגה תלת-ממדית:</h4>
                   <ul className="text-xs text-slate-600 space-y-0.5">
-                    <li>• <span className="font-medium">Click Izquierdo + Arrastrar:</span> Rotar cámara</li>
-                    <li>• <span className="font-medium">Rueda del Mouse:</span> Zoom in/out</li>
-                    <li>• <span className="font-medium">Click Derecho + Arrastrar:</span> Mover vista panorámica</li>
-                    <li>• <span className="font-medium">Flechas o W/A/S/D:</span> Navegar</li>
+                    <li>• <span className="font-medium">קליק שמאלי + גרירה:</span> סיבוב מצלמה</li>
+                    <li>• <span className="font-medium">גלגלת עכבר:</span> זום פנימה/החוצה</li>
+                    <li>• <span className="font-medium">קליק ימני + גרירה:</span> הזזת תצוגה פנורמית</li>
+                    <li>• <span className="font-medium">חצים או W/A/S/D:</span> ניווט</li>
                   </ul>
                 </div>
 
                 <div>
-                  <h4 className="text-xs font-semibold text-slate-700 mb-1">Vista 2D:</h4>
+                  <h4 className="text-xs font-semibold text-slate-700 mb-1">תצוגה דו-ממדית:</h4>
                   <ul className="text-xs text-slate-600 space-y-0.5">
-                    <li>• <span className="font-medium">Botones +/-:</span> Zoom in/out</li>
-                    <li>• <span className="font-medium">Botón ⟲:</span> Restablecer vista</li>
-                    <li>• <span className="font-medium">Flechas:</span> Pan</li>
-                    <li>• <span className="font-medium">Cuadrícula:</span> 0.5m × 0.5m</li>
+                    <li>• <span className="font-medium">כפתורים +/-:</span> זום פנימה/החוצה</li>
+                    <li>• <span className="font-medium">כפתור ⟲:</span> איפוס תצוגה</li>
+                    <li>• <span className="font-medium">חצים:</span> הזזה</li>
+                    <li>• <span className="font-medium">רשת:</span> 0.5m × 0.5m</li>
                   </ul>
                 </div>
 
                 <div className="p-2 bg-slate-50 rounded text-xs text-slate-600">
-                  <strong>Características:</strong>
+                  <strong>תכונות:</strong>
                   <ul className="mt-1 space-y-0.5">
-                    <li>• Grid delimitado por las paredes</li>
-                    <li>• Navegación 3D limitada al área del grid</li>
-                    <li>• Equipos se colocan automáticamente en la cuadrícula</li>
-                    <li>• Cámara 3D restringida entre piso y techo</li>
+                    <li>• רשת מוגבלת על ידי הקירות</li>
+                    <li>• ניווט תלת-ממדי מוגבל לאזור הרשת</li>
+                    <li>• ציוד ממוקם אוטומטית ברשת</li>
+                    <li>• מצלמה תלת-ממדית מוגבלת בין רצפה לתקרה</li>
                   </ul>
                 </div>
               </div>
@@ -731,8 +708,8 @@ function App() {
             )}
             {room && (
               <CollapsiblePanel
-                title="Equipo Médico"
-                subtitle={`${equipment.length} equipos`}
+                title="ציוד רפואי"
+                subtitle={`${equipment.length} ציוד`}
                 defaultExpanded={true}
                 className="flex-1 flex flex-col min-h-0"
               >
@@ -757,28 +734,28 @@ function App() {
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <Image className="w-6 h-6 text-emerald-600" />
-                Crear Habitación desde Foto
+                יצירת חדר מתמונה
               </h2>
               <button
                 onClick={handleClosePhotoModal}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                aria-label="Cerrar modal"
+                aria-label="סגור חלון"
               >
                 <X className="w-5 h-5 text-slate-600" />
               </button>
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Paso 1: Subir fotos */}
+              {/* שלב 1: העלאת תמונות */}
               {!generatedRoomData && (
                 <div className="space-y-4">
                   <div>
                     <h3 className="text-lg font-semibold text-slate-800 mb-2">
-                      Paso 1: Sube fotos de la habitación
+                      שלב 1: העלה תמונות של החדר
                     </h3>
                     <p className="text-sm text-slate-600 mb-4">
-                      Sube múltiples fotos desde diferentes ángulos para obtener mejores resultados.
-                      La IA analizará las fotos para extraer la geometría y las instalaciones.
+                      העלה מספר תמונות מזוויות שונות לקבלת תוצאות טובות יותר.
+                      הבינה המלאכותית תנתח את התמונות לחילוץ הגיאומטריה וההתקנות.
                     </p>
                     <PhotoUploader
                       onPhotosChange={handlePhotosChange}
@@ -797,12 +774,12 @@ function App() {
                         {isAnalyzing ? (
                           <>
                             <Loader2 className="w-5 h-5 animate-spin" />
-                            Analizando...
+                            מנתח...
                           </>
                         ) : (
                           <>
                             <Image className="w-5 h-5" />
-                            Analizar Fotos con IA
+                            ניתוח תמונות עם AI
                           </>
                         )}
                       </button>
@@ -811,11 +788,11 @@ function App() {
                 </div>
               )}
 
-              {/* Paso 2: Vista previa y confirmación */}
+              {/* שלב 2: תצוגה מקדימה ואישור */}
               {generatedRoomData && (
                 <div>
                   <h3 className="text-lg font-semibold text-slate-800 mb-4">
-                    Paso 2: Revisa y ajusta los resultados
+                    שלב 2: בדוק והתאם את התוצאות
                   </h3>
                   <RoomAnalysisPreview
                     roomData={generatedRoomData}
@@ -838,12 +815,12 @@ function App() {
             <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
               <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
                 <FolderOpen className="w-6 h-6 text-emerald-600" />
-                Seleccionar Casa/Establecimiento
+                בחר בית/מוסד
               </h2>
               <button
                 onClick={() => setShowHomeSelector(false)}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
-                aria-label="Cerrar modal"
+                aria-label="סגור חלון"
               >
                 <X className="w-5 h-5 text-slate-600" />
               </button>
@@ -851,7 +828,7 @@ function App() {
 
             <div className="p-6">
               <p className="text-sm text-slate-600 mb-4">
-                Selecciona una casa o establecimiento médico para cargar:
+                בחר בית או מוסד רפואי לטעינה:
               </p>
               <div className="space-y-2">
                 {availableHomes.map((home) => (
@@ -864,7 +841,7 @@ function App() {
                       <div>
                         <h3 className="font-semibold text-slate-800">{home.name}</h3>
                         <p className="text-sm text-slate-600 mt-1">
-                          {home.data.rooms?.length || 0} habitaciones
+                          {home.data.rooms?.length || 0} חדרים
                         </p>
                       </div>
                       <FolderOpen className="w-5 h-5 text-slate-400" />

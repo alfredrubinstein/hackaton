@@ -168,7 +168,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
       {isDraggingOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 bg-opacity-20 border-4 border-dashed border-emerald-500 rounded-lg pointer-events-none z-10">
           <div className="text-emerald-700 text-xl font-semibold bg-white px-6 py-3 rounded-lg shadow-lg">
-            Suelta aquí para colocar el equipo
+            שחרר כאן כדי למקם את הציוד
           </div>
         </div>
       )}
@@ -516,7 +516,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
             fill="#64748b"
             textAnchor="end"
           >
-            Escala: 0.5m
+            קנה מידה: 0.5מ'
           </text>
           </g>
         </svg>
@@ -525,7 +525,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
           <button
             onClick={() => handlePan('up')}
             className="w-10 h-10 bg-white hover:bg-slate-100 rounded-lg shadow-lg flex items-center justify-center text-slate-700 hover:text-slate-900 transition-colors border border-slate-200"
-            aria-label="Pan arriba"
+            aria-label="הזז למעלה"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
@@ -535,7 +535,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
             <button
               onClick={() => handlePan('left')}
               className="w-10 h-10 bg-white hover:bg-slate-100 rounded-lg shadow-lg flex items-center justify-center text-slate-700 hover:text-slate-900 transition-colors border border-slate-200"
-              aria-label="Pan izquierda"
+              aria-label="הזז שמאלה"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -544,7 +544,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
             <button
               onClick={() => handlePan('down')}
               className="w-10 h-10 bg-white hover:bg-slate-100 rounded-lg shadow-lg flex items-center justify-center text-slate-700 hover:text-slate-900 transition-colors border border-slate-200"
-              aria-label="Pan abajo"
+              aria-label="הזז למטה"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -553,7 +553,7 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
             <button
               onClick={() => handlePan('right')}
               className="w-10 h-10 bg-white hover:bg-slate-100 rounded-lg shadow-lg flex items-center justify-center text-slate-700 hover:text-slate-900 transition-colors border border-slate-200"
-              aria-label="Pan derecha"
+              aria-label="הזז ימינה"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -565,8 +565,8 @@ export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, o
 
       <div className="p-3 bg-slate-50 border-t border-slate-200 flex-shrink-0">
         <p className="text-xs text-slate-600 text-center">
-          {equipment.length} equipos • Cuadrícula de {gridSize}m •
-          {' '}Área: {(roomWidth * roomHeight).toFixed(1)}m²
+          {equipment.length} ציוד • רשת של {gridSize}מ' •
+          {' '}שטח: {(roomWidth * roomHeight).toFixed(1)}מ²
         </p>
       </div>
     </div>

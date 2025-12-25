@@ -107,7 +107,7 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
       }
     } catch (error) {
       console.error('Error accediendo a la cámara:', error);
-      alert('No se pudo acceder a la cámara. Por favor, verifica los permisos.');
+      alert('לא ניתן לגשת למצלמה. אנא בדוק הרשאות.');
     }
   }, []);
 
@@ -186,10 +186,10 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
           <>
             <Upload className="w-12 h-12 text-slate-400 mx-auto mb-3" />
             <p className="text-slate-600 mb-2">
-              Arrastra fotos aquí o haz clic para seleccionar
+              גרור תמונות לכאן או לחץ לבחירה
             </p>
             <p className="text-sm text-slate-500">
-              {photos.length} / {maxPhotos} fotos seleccionadas
+              {photos.length} / {maxPhotos} תמונות נבחרו
             </p>
           </>
         ) : (
@@ -213,7 +213,7 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
                 disabled={photos.length >= maxPhotos}
                 className="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                Capturar Foto
+                צלם תמונה
               </button>
               <button
                 onClick={(e) => {
@@ -222,7 +222,7 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
                 }}
                 className="px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700"
               >
-                Cerrar Cámara
+                סגור מצלמה
               </button>
             </div>
           </div>
@@ -240,7 +240,7 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
           className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           <Camera className="w-5 h-5" />
-          Abrir Cámara
+          פתח מצלמה
         </button>
       )}
 
@@ -251,18 +251,18 @@ export function PhotoUploader({ onPhotosChange, maxPhotos = 5, disabled = false 
             <div key={photo.id} className="relative group">
               <img
                 src={photo.preview}
-                alt="Preview"
+                alt="תצוגה מקדימה"
                 className="w-full h-32 object-cover rounded-lg border border-slate-300"
               />
               <button
                 onClick={() => removePhoto(photo.id)}
                 className="absolute top-2 right-2 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                aria-label="Eliminar foto"
+                aria-label="מחק תמונה"
               >
                 <X className="w-4 h-4" />
               </button>
               <div className="absolute bottom-2 left-2 px-2 py-1 bg-slate-800 bg-opacity-75 text-white text-xs rounded">
-                {photo.source === 'camera' ? 'Cámara' : 'Archivo'}
+                {photo.source === 'camera' ? 'מצלמה' : 'קובץ'}
               </div>
             </div>
           ))}

@@ -33,7 +33,7 @@ export function PositionPanel({
   if (!selectedEquipment) {
     return (
       <div className="p-3 text-center text-slate-500 text-xs">
-        Selecciona un objeto haciendo clic en su arcoíris
+        בחר אובייקט על ידי לחיצה על הצירים שלו
       </div>
     );
   }
@@ -53,7 +53,7 @@ export function PositionPanel({
       // Actualizar posición automáticamente
       onUpdatePosition(selectedEquipment.id, newPosition);
     } else {
-      setError('Posición fuera de los límites de la habitación');
+      setError('מיקום מחוץ לגבולות החדר');
     }
   };
 
@@ -87,7 +87,7 @@ export function PositionPanel({
         <button
           onClick={onDeselect}
           className="p-1 text-slate-400 hover:text-slate-600 rounded transition-colors"
-          aria-label="Cerrar"
+          aria-label="סגור"
         >
           <X className="w-4 h-4" />
         </button>
@@ -96,7 +96,7 @@ export function PositionPanel({
       <div className="space-y-2">
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
-            Posición X (metros)
+            מיקום X (מטרים)
           </label>
           <input
             type="number"
@@ -110,7 +110,7 @@ export function PositionPanel({
 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
-            Posición Y (metros)
+            מיקום Y (מטרים)
           </label>
           <input
             type="number"
@@ -124,7 +124,7 @@ export function PositionPanel({
 
         <div>
           <label className="block text-xs font-medium text-slate-700 mb-1">
-            Posición Z (metros)
+            מיקום Z (מטרים)
           </label>
           <input
             type="number"
@@ -145,10 +145,10 @@ export function PositionPanel({
 
       <div className="pt-2 border-t border-slate-200">
         <p className="text-xs text-slate-500">
-          <strong>Tipo:</strong> {selectedEquipment.type}
+          <strong>סוג:</strong> {selectedEquipment.type}
         </p>
         <p className="text-xs text-slate-500 mt-1">
-          <strong>Dimensiones:</strong> {selectedEquipment.dimensions.width}m × {selectedEquipment.dimensions.depth}m × {selectedEquipment.dimensions.height}m
+          <strong>מידות:</strong> {selectedEquipment.dimensions.width}מ' × {selectedEquipment.dimensions.depth}מ' × {selectedEquipment.dimensions.height}מ'
         </p>
       </div>
     </div>

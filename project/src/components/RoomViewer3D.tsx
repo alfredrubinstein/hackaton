@@ -1089,13 +1089,13 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
     >
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-100 rounded-lg">
-          <div className="text-slate-600">Cargando vista 3D...</div>
+          <div className="text-slate-600">טוען תצוגה תלת-ממדית...</div>
         </div>
       )}
       {isDraggingOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-emerald-500 bg-opacity-20 border-4 border-dashed border-emerald-500 rounded-lg pointer-events-none z-10">
           <div className="text-emerald-700 text-xl font-semibold bg-white px-6 py-3 rounded-lg shadow-lg">
-            Suelta aquí para colocar el equipo
+            שחרר כאן כדי למקם את הציוד
           </div>
         </div>
       )}

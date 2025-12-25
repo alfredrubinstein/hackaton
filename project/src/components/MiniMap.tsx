@@ -36,7 +36,7 @@ export function MiniMap({ rooms, selectedRoomId, onRoomSelect, viewBox = '0 0 10
         viewBox={viewBox}
         className="w-full h-48 border border-slate-200 rounded"
         role="img"
-        aria-label="Mapa interactivo de la propiedad"
+        aria-label="מפה אינטראקטיבית של הנכס"
       >
         <defs>
           <pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -65,8 +65,8 @@ export function MiniMap({ rooms, selectedRoomId, onRoomSelect, viewBox = '0 0 10
               }}
               tabIndex={0}
               role="button"
-              aria-label={`Habitación: ${room.name}. ${
-                selectedRoomId === room.id ? 'Seleccionada' : 'Presiona Enter para seleccionar'
+              aria-label={`חדר: ${room.name}. ${
+                selectedRoomId === room.id ? 'נבחר' : 'לחץ Enter לבחירה'
               }`}
             />
             <text
@@ -85,7 +85,7 @@ export function MiniMap({ rooms, selectedRoomId, onRoomSelect, viewBox = '0 0 10
 
       <div className="mt-2 text-xs text-slate-600">
         <p>
-          Clic en habitación o usa flechas del teclado
+          לחץ על חדר או השתמש בחצים במקלדת
         </p>
       </div>
     </div>

@@ -1,0 +1,52 @@
+# Reglas de Cursor para el Proyecto
+
+## Documentación de Prompts
+
+**IMPORTANTE:** Cada vez que recibas un prompt del usuario (ya sea una pregunta o una solicitud de cambio), DEBES crear automáticamente un archivo en la carpeta `preguntas/` con la siguiente información:
+
+### Formato del archivo:
+- **Nombre del archivo:** `YYYY-MM-DD_HH-mm-ss_descripcion-corta.md`
+  - Usa la fecha y hora actual en formato `YYYY-MM-DD_HH-mm-ss`
+  - Agrega una descripción corta del prompt (sin espacios, usar guiones)
+  - Ejemplo: `2025-12-25_08-19-00_crear-carpeta-preguntas.md`
+
+### Contenido del archivo:
+1. **Título:** Descripción breve del prompt
+2. **Fecha y hora de creación:** En formato legible (YYYY-MM-DD HH:MM:SS)
+3. **Prompt Original:** El texto exacto del prompt recibido
+4. **Tipo de Prompt:** 
+   - "Pregunta" - si solo se busca información
+   - "Solicitud de cambio/implementación" - si se solicita hacer cambios
+5. **Cambios Realizados** (si aplica): 
+   - Lista detallada de todos los cambios realizados
+   - Archivos creados, modificados o eliminados
+   - Explicación de cada cambio
+6. **Respuesta** (si aplica):
+   - Respuesta completa a la pregunta
+   - Información solicitada
+
+### Ejemplo de estructura:
+```markdown
+# Prompt: [Descripción breve]
+
+**Fecha y hora de creación:** YYYY-MM-DD HH:MM:SS
+
+## Prompt Original
+[Texto exacto del prompt]
+
+## Tipo de Prompt
+[Pregunta | Solicitud de cambio/implementación]
+
+## Cambios Realizados
+[Si aplica, lista detallada de cambios]
+
+## Respuesta
+[Si aplica, respuesta a la pregunta]
+```
+
+### Notas importantes:
+- Crear el archivo ANTES de realizar cualquier cambio o responder
+- Usar siempre formato Markdown (.md)
+- Mantener un orden cronológico con el formato de fecha/hora
+- Ser descriptivo pero conciso en los nombres de archivo
+

@@ -8,7 +8,7 @@ interface EquipmentCatalogProps {
 
 export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    new Set(['Mobiliario', 'Monitoreo'])
+    new Set(['ריהוט', 'ניטור'])
   );
 
   const toggleCategory = (category: string) => {
@@ -37,7 +37,7 @@ export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
   return (
     <div className="p-2">
       <p className="text-xs text-slate-600 mb-2 px-2">
-        Arrastra los equipos a la habitación
+        גרור את הציוד לחדר
       </p>
       <div className="overflow-y-auto">
         {categories.map(category => (
@@ -64,7 +64,7 @@ export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
                     className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border-2 border-transparent hover:border-slate-300 hover:bg-slate-100 cursor-move transition-all group"
                     role="button"
                     tabIndex={0}
-                    aria-label={`Arrastrar ${equipment.name}`}
+                    aria-label={`גרור ${equipment.name}`}
                   >
                     <div
                       className="text-2xl flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-lg"
@@ -92,7 +92,7 @@ export function EquipmentCatalog({ onDragStart }: EquipmentCatalogProps) {
         ))}
       </div>
       <p className="text-xs text-slate-500 text-center mt-2 px-2">
-        {medicalEquipmentCatalog.length} equipos disponibles
+        {medicalEquipmentCatalog.length} ציוד זמין
       </p>
     </div>
   );

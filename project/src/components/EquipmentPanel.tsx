@@ -54,7 +54,7 @@ export function EquipmentPanel({
     );
 
     if (!isValid) {
-      setValidationError('El equipo está fuera de los límites de la habitación o sobre una abertura.');
+      setValidationError('הציוד נמצא מחוץ לגבולות החדר או מעל פתח.');
       return;
     }
 
@@ -86,10 +86,10 @@ export function EquipmentPanel({
         <button
           onClick={() => setShowAddForm(!showAddForm)}
           className="flex items-center gap-1 px-2 py-1.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors text-xs"
-          aria-label="Agregar nuevo equipo médico"
+          aria-label="הוסף ציוד רפואי חדש"
         >
           <Plus size={14} />
-          Agregar
+          הוסף
         </button>
       </div>
 
@@ -97,7 +97,7 @@ export function EquipmentPanel({
         <form onSubmit={handleSubmit} className="mb-3 p-3 bg-slate-50 rounded-lg space-y-2">
           <div>
             <label htmlFor="eq-name" className="block text-xs font-medium text-slate-700 mb-1">
-              Nombre del Equipo
+              שם הציוד
             </label>
             <input
               id="eq-name"
@@ -112,7 +112,7 @@ export function EquipmentPanel({
 
           <div>
             <label htmlFor="eq-type" className="block text-xs font-medium text-slate-700 mb-1">
-              Tipo
+              סוג
             </label>
             <select
               id="eq-type"
@@ -120,10 +120,10 @@ export function EquipmentPanel({
               onChange={(e) => setFormData({ ...formData, type: e.target.value })}
               className="w-full px-2 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
             >
-              <option value="monitor">Monitor</option>
-              <option value="bed">Cama</option>
-              <option value="cart">Carrito</option>
-              <option value="scanner">Escáner</option>
+              <option value="monitor">מוניטור</option>
+              <option value="bed">מיטה</option>
+              <option value="cart">עגלה</option>
+              <option value="scanner">סורק</option>
             </select>
           </div>
 
@@ -175,7 +175,7 @@ export function EquipmentPanel({
           <div className="grid grid-cols-3 gap-1.5">
             <div>
               <label htmlFor="eq-width" className="block text-xs font-medium text-slate-700 mb-1">
-                Ancho
+                רוחב
               </label>
               <input
                 id="eq-width"
@@ -190,7 +190,7 @@ export function EquipmentPanel({
             </div>
             <div>
               <label htmlFor="eq-height" className="block text-xs font-medium text-slate-700 mb-1">
-                Altura
+                גובה
               </label>
               <input
                 id="eq-height"
@@ -205,7 +205,7 @@ export function EquipmentPanel({
             </div>
             <div>
               <label htmlFor="eq-depth" className="block text-xs font-medium text-slate-700 mb-1">
-                Prof.
+                עומק
               </label>
               <input
                 id="eq-depth"
@@ -235,7 +235,7 @@ export function EquipmentPanel({
               type="submit"
               className="flex-1 px-3 py-1.5 text-xs bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
             >
-              Agregar
+              הוסף
             </button>
             <button
               type="button"
@@ -245,16 +245,16 @@ export function EquipmentPanel({
               }}
               className="px-3 py-1.5 text-xs bg-slate-300 text-slate-700 rounded-lg hover:bg-slate-400 transition-colors"
             >
-              Cancelar
+              ביטול
             </button>
           </div>
         </form>
       )}
 
-      <div className="space-y-1.5 max-h-[400px] overflow-y-auto" role="list" aria-label="Lista de equipos médicos">
+      <div className="space-y-1.5 max-h-[400px] overflow-y-auto" role="list" aria-label="רשימת ציוד רפואי">
         {equipment.length === 0 ? (
           <p className="text-slate-500 text-xs text-center py-3">
-            No hay equipos médicos
+            אין ציוד רפואי
           </p>
         ) : (
           equipment.map((eq) => (
@@ -272,7 +272,7 @@ export function EquipmentPanel({
               <button
                 onClick={() => onDeleteEquipment(eq.id)}
                 className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                aria-label={`Eliminar ${eq.name}`}
+                aria-label={`מחק ${eq.name}`}
               >
                 <Trash2 size={14} />
               </button>
