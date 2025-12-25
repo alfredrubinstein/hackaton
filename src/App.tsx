@@ -9,7 +9,7 @@ import { CollapsiblePanel } from './components/CollapsiblePanel';
 import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
 import { PhotoUploader } from './components/PhotoUploader';
 import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
-import { RCCarControlPanel } from '../rc/components/RCCarControlPanel';
+import { RCCarControlPanel } from '../project/rc/components/RCCarControlPanel';
 import { MeasurementTool } from './components/MeasurementTool';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
