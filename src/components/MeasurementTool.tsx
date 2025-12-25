@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, Info, Move, RotateCw, ZoomIn, CreditCard } from 'lucide-react';
+import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, CreditCard } from 'lucide-react';
 
 // Declarar tipos para OpenCV
 declare global {
@@ -781,7 +781,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
+        <div className="bg-white rounded-xl shadow-2xl w-[1600px] h-[900px] overflow-hidden flex flex-col">
           {/* Header mejorado */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -933,36 +933,6 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
             {/* Panel derecho - Información y mediciones */}
             <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col overflow-y-auto">
               <div className="p-4 space-y-4">
-                {/* Instrucciones */}
-                <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Info className="w-5 h-5 text-emerald-600" />
-                    <h3 className="font-semibold text-slate-800">הוראות שימוש</h3>
-                  </div>
-                  <div className="space-y-2 text-sm text-slate-600">
-                    <div className="flex gap-2">
-                      <span className="font-semibold text-emerald-600">1.</span>
-                      <span>טען תמונה של החדר או הסביבה</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="font-semibold text-emerald-600">2.</span>
-                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> para mostrar hoja A4</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="font-semibold text-emerald-600">3.</span>
-                      <span>Controles: <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">G</kbd> Mover, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">R</kbd> Rotar, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">S</kbd> Escalar, Rueda para zoom</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="font-semibold text-emerald-600">4.</span>
-                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> de nuevo para usar las esquinas de la hoja A4 como calibración</span>
-                    </div>
-                    <div className="flex gap-2">
-                      <span className="font-semibold text-emerald-600">5.</span>
-                      <span>לחץ על שתי נקודות למדידת המרחק ביניהן</span>
-                    </div>
-                  </div>
-                </div>
-
                 {/* Estado actual */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
                   <h3 className="font-semibold text-slate-800 mb-3">מצב נוכחי</h3>
@@ -1006,69 +976,6 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     )}
                   </div>
                 </div>
-
-                {/* Controles de hoja A4 */}
-                {hasImage && (
-                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
-                    <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-emerald-600" />
-                      Controles de Hoja A4
-                    </h3>
-                    <div className="space-y-2">
-                      <button
-                        onClick={() => {
-                          setShowCreditCard(!showCreditCard);
-                          if (!showCreditCard) setControlMode('move');
-                          else setControlMode('none');
-                        }}
-                        className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                          showCreditCard
-                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
-                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
-                        }`}
-                      >
-                        {showCreditCard ? 'Ocultar Hoja A4' : 'Mostrar Hoja A4 (C)'}
-                      </button>
-                      {showCreditCard && (
-                        <div className="grid grid-cols-3 gap-2">
-                          <button
-                            onClick={() => setControlMode('move')}
-                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                              controlMode === 'move'
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            <Move className="w-3 h-3" />
-                            Mover (G)
-                          </button>
-                          <button
-                            onClick={() => setControlMode('rotate')}
-                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                              controlMode === 'rotate'
-                                ? 'bg-purple-600 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            <RotateCw className="w-3 h-3" />
-                            Rotar (R)
-                          </button>
-                          <button
-                            onClick={() => setControlMode('scale')}
-                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
-                              controlMode === 'scale'
-                                ? 'bg-orange-600 text-white'
-                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                            }`}
-                          >
-                            <ZoomIn className="w-3 h-3" />
-                            Escalar (S)
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
 
                 {/* Historial de mediciones */}
                 {measurements.length > 0 && (
