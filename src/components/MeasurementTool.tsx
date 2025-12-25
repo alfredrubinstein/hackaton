@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, ZoomIn, Info } from 'lucide-react';
+import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, Info } from 'lucide-react';
 
 // Declarar tipos para OpenCV
 declare global {
@@ -27,12 +27,12 @@ interface Measurement {
 
 export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
-  const zoomCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imgOriginalRef = useRef<any>(null);
   const imgMainRef = useRef<any>(null);
   const transformMatrixRef = useRef<any>(null);
   const openCvLoadedRef = useRef<boolean>(false);
+  const isCalibratedRef = useRef<boolean>(false); // Ref para acceso al estado actual en handlers
   const [status, setStatus] = useState('טוען OpenCV...');
   const [isLoading, setIsLoading] = useState(true);
   const [refPoints, setRefPoints] = useState<Point[]>([]);
@@ -43,6 +43,10 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   const [calibrationWidth, setCalibrationWidth] = useState('');
   const [calibrationHeight, setCalibrationHeight] = useState('');
   const [hasImage, setHasImage] = useState(false);
+  
+  // Medidas estándar de tarjeta de crédito (en cm)
+  const CREDIT_CARD_WIDTH = 8.56;  // Ancho estándar
+  const CREDIT_CARD_HEIGHT = 5.398; // Alto estándar
 
   // Cargar OpenCV.js
   useEffect(() => {
@@ -136,6 +140,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       }
       setRefPoints([]);
       setMeasurementPoints([]);
+      isCalibratedRef.current = false; // Actualizar ref también
       setIsCalibrated(false);
       setMeasurements([]);
       setHasImage(false);
@@ -246,31 +251,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   };
 
   const setupEvents = (canvas: HTMLCanvasElement) => {
-    canvas.onmousemove = (e) => handleZoom(e, canvas);
     canvas.onclick = (e) => handleClick(e, canvas);
-  };
-
-  const handleZoom = (e: MouseEvent, canvas: HTMLCanvasElement) => {
-    if (!imgOriginalRef.current || !zoomCanvasRef.current || !window.cv) return;
-    
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    const size = 50;
-    
-    let startX = Math.max(0, Math.min(x - size / 2, imgOriginalRef.current.cols - size));
-    let startY = Math.max(0, Math.min(y - size / 2, imgOriginalRef.current.rows - size));
-    
-    const roi = imgOriginalRef.current.roi(new window.cv.Rect(startX, startY, size, size));
-    const dst = new window.cv.Mat();
-    window.cv.resize(roi, dst, new window.cv.Size(300, 300), 0, 0, window.cv.INTER_CUBIC);
-    
-    window.cv.line(dst, new window.cv.Point(150, 0), new window.cv.Point(150, 300), new window.cv.Scalar(255, 255, 255, 255), 1);
-    window.cv.line(dst, new window.cv.Point(0, 150), new window.cv.Point(300, 150), new window.cv.Scalar(255, 255, 255, 255), 1);
-    
-    window.cv.imshow(zoomCanvasRef.current, dst);
-    roi.delete();
-    dst.delete();
   };
 
   const handleClick = (e: MouseEvent, canvas: HTMLCanvasElement) => {
@@ -280,24 +261,12 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Si aún no está calibrado, agregar puntos de calibración
-    setRefPoints((prev) => {
-      if (prev.length < 4) {
-        const newPoints = [...prev, { x, y }];
-        drawMarker(x, y, new window.cv.Scalar(0, 255, 0, 255), newPoints.length.toString());
-        
-        if (newPoints.length === 4) {
-          setTimeout(() => {
-            setShowCalibrationModal(true);
-          }, 100);
-        }
-        return newPoints;
-      }
-      return prev;
-    });
+    // Usar el ref para obtener el valor actual de isCalibrated
+    const calibrated = isCalibratedRef.current;
     
-    // Si ya está calibrado, agregar puntos de medición
-    if (isCalibrated) {
+    // Si ya está calibrado, solo agregar puntos de medición
+    if (calibrated) {
+      console.log('[MeasurementTool] Agregando punto de medición', { x, y });
       setMeasurementPoints((prev) => {
         const newPoints = [...prev, { x, y }];
         drawMarker(x, y, new window.cv.Scalar(255, 0, 0, 255), '');
@@ -307,7 +276,26 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         }
         return newPoints;
       });
+      return; // Salir temprano para evitar agregar puntos de calibración
     }
+    
+    // Si aún no está calibrado, agregar puntos de calibración
+    console.log('[MeasurementTool] Agregando punto de calibración', { x, y });
+    setRefPoints((prev) => {
+      if (prev.length < 4) {
+        const newPoints = [...prev, { x, y }];
+        drawMarker(x, y, new window.cv.Scalar(0, 255, 0, 255), newPoints.length.toString());
+        
+        if (newPoints.length === 4) {
+          // Automáticamente calibrar con medidas de tarjeta de crédito
+          setTimeout(() => {
+            autoCalibrateWithCreditCard(newPoints);
+          }, 100);
+        }
+        return newPoints;
+      }
+      return prev;
+    });
   };
 
   const drawMarker = (x: number, y: number, color: any, text: string) => {
@@ -318,6 +306,42 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       window.cv.putText(imgMainRef.current, text, new window.cv.Point(x, y - 10), 0, 0.8, color, 2);
     }
     window.cv.imshow(mainCanvasRef.current, imgMainRef.current);
+  };
+
+  const autoCalibrateWithCreditCard = (points: Point[]) => {
+    if (!window.cv) return;
+    
+    // Limpiar matriz anterior si existe
+    if (transformMatrixRef.current) {
+      transformMatrixRef.current.delete();
+    }
+    
+    const srcMat = window.cv.matFromArray(
+      4,
+      1,
+      window.cv.CV_32FC2,
+      points.flatMap((p) => [p.x, p.y])
+    );
+    
+    // Usar medidas estándar de tarjeta de crédito
+    const dstMat = window.cv.matFromArray(4, 1, window.cv.CV_32FC2, [
+      0, 0,
+      CREDIT_CARD_WIDTH, 0,
+      CREDIT_CARD_WIDTH, CREDIT_CARD_HEIGHT,
+      0, CREDIT_CARD_HEIGHT,
+    ]);
+    
+    const M = window.cv.getPerspectiveTransform(srcMat, dstMat);
+    transformMatrixRef.current = M;
+    isCalibratedRef.current = true; // Actualizar ref primero
+    setIsCalibrated(true);
+    setStatus('הכיול הושלם! כעת תוכל למדוד מרחקים.');
+    setShowCalibrationModal(false);
+    
+    console.log('[MeasurementTool] Calibración completada, isCalibrated = true');
+    
+    srcMat.delete();
+    dstMat.delete();
   };
 
   const handleCalibrate = () => {
@@ -351,11 +375,14 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     
     const M = window.cv.getPerspectiveTransform(srcMat, dstMat);
     transformMatrixRef.current = M;
+    isCalibratedRef.current = true; // Actualizar ref primero
     setIsCalibrated(true);
     setStatus('הכיול הושלם! כעת תוכל למדוד מרחקים.');
     setShowCalibrationModal(false);
     setCalibrationWidth('');
     setCalibrationHeight('');
+    
+    console.log('[MeasurementTool] Calibración completada (manual), isCalibrated = true');
     
     srcMat.delete();
     dstMat.delete();
@@ -425,6 +452,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     }
     setRefPoints([]);
     setMeasurementPoints([]);
+    isCalibratedRef.current = false; // Actualizar ref también
     setIsCalibrated(false);
     setMeasurements([]);
     setStatus('מוכן. בחר 4 נקודות לכיול.');
@@ -535,16 +563,20 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     </div>
                   </div>
 
-                  {/* Canvas principal */}
-                  <div className="flex-1 flex gap-4 min-h-0">
-                    <div className="flex-1 bg-slate-50 rounded-lg p-4 flex items-center justify-center border-2 border-dashed border-slate-300 relative">
+                  {/* Canvas principal - Ocupa todo el espacio disponible */}
+                  <div className="flex-1 min-h-0">
+                    <div className="w-full h-full bg-slate-50 rounded-lg p-4 flex items-center justify-center border-2 border-dashed border-slate-300 relative">
                       {/* Canvas siempre renderizado pero oculto cuando no hay imagen */}
                       <canvas
                         ref={mainCanvasRef}
                         className={`max-w-full max-h-full rounded-lg shadow-lg ${
                           hasImage ? 'cursor-crosshair' : 'hidden'
                         }`}
-                        style={{ maxHeight: 'calc(95vh - 300px)' }}
+                        style={{ 
+                          maxWidth: '100%',
+                          maxHeight: '100%',
+                          objectFit: 'contain'
+                        }}
                       />
                       {!hasImage && (
                         <div className="text-center py-12 absolute inset-0 flex flex-col items-center justify-center">
@@ -554,22 +586,6 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                         </div>
                       )}
                     </div>
-                    {hasImage && (
-                      <div className="flex-shrink-0 w-64">
-                        <div className="bg-slate-900 rounded-lg p-2 mb-2">
-                          <canvas
-                            ref={zoomCanvasRef}
-                            width="300"
-                            height="300"
-                            className="w-full rounded"
-                          />
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-slate-600 bg-slate-50 rounded-lg px-3 py-2">
-                          <ZoomIn className="w-4 h-4" />
-                          <span>תצוגת זום</span>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 </>
               )}
@@ -591,11 +607,11 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">2.</span>
-                      <span>בחר 4 נקודות שיוצרות מלבן (פינה של שולחן או קיר)</span>
+                      <span>בחר 4 נקודות שיוצרות מלבן של כרטיס אשראי</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">3.</span>
-                      <span>הזן את הרוחב והאורך האמיתיים בסנטימטרים</span>
+                      <span>הכיול יתבצע אוטומטית עם מידות כרטיס אשראי (8.56 × 5.398 ס״מ)</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">4.</span>
