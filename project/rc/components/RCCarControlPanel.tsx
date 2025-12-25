@@ -19,16 +19,16 @@ export function RCCarControlPanel({ onMapGenerated, roomVertices }: RCCarControl
 
   useEffect(() => {
     // Configurar callbacks
-    controller.onPositionUpdate = (pos, encoders) => {
+    controller.onPositionUpdate = (pos) => {
       setPosition(pos);
       mapGeneratorRef.current.addPathPoint(pos.x / 100, pos.y / 100, pos.theta);
     };
 
-    controller.onPathUpdate = (path) => {
+    controller.onPathUpdate = (path: Array<{ x: number; y: number; theta: number }>) => {
       setPathHistory(path);
     };
 
-    controller.onConnectionChange = (connected) => {
+    controller.onConnectionChange = (connected: boolean) => {
       setIsConnected(connected);
     };
 

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Camera, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, Camera, X } from 'lucide-react';
 
 export interface PhotoFile {
   id: string;

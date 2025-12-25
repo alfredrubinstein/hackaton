@@ -15,7 +15,6 @@ export function EquipmentPanel({
   room,
   equipment,
   onAddEquipment,
-  onUpdateEquipment,
   onDeleteEquipment
 }: EquipmentPanelProps) {
   const [showAddForm, setShowAddForm] = useState(false);

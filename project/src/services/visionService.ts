@@ -139,7 +139,7 @@ class VisionService {
   private detectInstallations(
     labels: any[],
     objects: any[],
-    textAnnotations: any[]
+    _textAnnotations: any[]
   ): VisionAnalysisResult['installations'] {
     const installations: VisionAnalysisResult['installations'] = [];
 
@@ -153,7 +153,7 @@ class VisionService {
       obj => obj.name?.toLowerCase().includes('door') && obj.score > 0.6
     );
 
-    doorLabels.forEach((label, index) => {
+    doorLabels.forEach((label) => {
       installations.push({
         type: 'door',
         position: { x: 0, y: 0 }, // Se calculará basado en bounding box
@@ -235,19 +235,14 @@ class VisionService {
   /**
    * Estima la geometría de la habitación basándose en objetos detectados
    */
-  private estimateRoomGeometry(objects: any[], labels: any[]): VisionAnalysisResult['geometry'] {
+  private estimateRoomGeometry(objects: any[], _labels: any[]): VisionAnalysisResult['geometry'] {
     // Por defecto, asumimos una habitación rectangular estándar
     // En una implementación más avanzada, se usaría detección de profundidad o múltiples fotos
-    const defaultVertices = [
-      { x: 0, y: 0 },
-      { x: 5, y: 0 },
-      { x: 5, y: 4 },
-      { x: 0, y: 4 },
-    ];
+    // Vértices por defecto: [{ x: 0, y: 0 }, { x: 5, y: 0 }, { x: 5, y: 4 }, { x: 0, y: 4 }]
 
     // Intentar detectar objetos de referencia para escala
     const doorObjects = objects.filter(
-      obj => obj.name?.toLowerCase().includes('door') && obj.score > 0.6
+      (obj: any) => obj.name?.toLowerCase().includes('door') && obj.score > 0.6
     );
 
     // Si detectamos una puerta, podemos usarla como referencia (puertas estándar ~2m de alto)
@@ -268,7 +263,7 @@ class VisionService {
       const allX: number[] = [];
       const allY: number[] = [];
 
-      objects.forEach((obj) => {
+      objects.forEach((obj: any) => {
         const bbox = this.normalizeBoundingBox(obj.boundingPoly);
         allX.push(bbox.x, bbox.x + bbox.width);
         allY.push(bbox.y, bbox.y + bbox.height);
@@ -339,9 +334,9 @@ class VisionService {
     // Usar la geometría más confiable (la que tenga más objetos detectados)
     const bestGeometry = results.reduce((best, current) => {
       return current.detectedObjects.length > best.detectedObjects.length
-        ? current.geometry
-        : best.geometry;
-    }, results[0].geometry);
+        ? current
+        : best;
+    }, results[0]).geometry;
 
     // Combinar todos los objetos detectados
     const allObjects = results.flatMap(r => r.detectedObjects);

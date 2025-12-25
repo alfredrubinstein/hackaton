@@ -18,7 +18,7 @@ interface PropertyState {
   updateRooms: (propertyId: string) => Promise<void>;
 }
 
-export const usePropertyStore = create<PropertyState>((set, get) => ({
+export const usePropertyStore = create<PropertyState>((set) => ({
   property: null,
   rooms: [],
   selectedRoomId: null,

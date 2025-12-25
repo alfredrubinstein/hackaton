@@ -3,7 +3,7 @@
  * Convierte los resultados del análisis en el formato compatible con Room
  */
 
-import type { Room, Installation, Vertex } from '../types';
+import type { Installation, Vertex } from '../types';
 import type { VisionAnalysisResult } from './visionService';
 
 export interface GeneratedRoomData {
@@ -25,7 +25,7 @@ export class RoomGeneratorService {
   generateRoomFromAnalysis(
     analysis: VisionAnalysisResult,
     roomName: string = 'Habitación desde Foto',
-    referenceMeasurement?: { value: number; unit: 'meters' | 'feet' }
+    _referenceMeasurement?: { value: number; unit: 'meters' | 'feet' }
   ): GeneratedRoomData {
     // Normalizar vértices y asegurar que formen un polígono válido
     const vertices = this.normalizeVertices(analysis.geometry.vertices);
@@ -121,14 +121,14 @@ export class RoomGeneratorService {
   private convertInstallations(
     detectedInstallations: VisionAnalysisResult['installations'],
     roomVertices: Vertex[],
-    wallHeight: number
+    _wallHeight: number
   ): GeneratedRoomData['installations'] {
     const installations: GeneratedRoomData['installations'] = [];
 
     // Calcular centro y dimensiones de la habitación para posicionar instalaciones
     const bounds = this.calculateRoomBounds(roomVertices);
     const centerX = (bounds.minX + bounds.maxX) / 2;
-    const centerZ = (bounds.minZ + bounds.maxZ) / 2;
+    // const centerZ = (bounds.minZ + bounds.maxZ) / 2; // Reservado para uso futuro
 
     detectedInstallations.forEach((inst) => {
       if (inst.type === 'door' && 'start' in inst.position) {

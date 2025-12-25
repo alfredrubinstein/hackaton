@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import type { Room, MedicalEquipment, Installation, Position3D } from '../types';
 import type { EquipmentTemplate } from '../data/medicalEquipmentCatalog';
 import { isEquipmentInValidPosition } from '../utils/geometry';
@@ -13,11 +13,12 @@ interface FloorPlan2DProps {
   onEquipmentSelect?: (id: string | null) => void;
 }
 
-export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, onEquipmentUpdate, selectedEquipmentId, onEquipmentSelect }: FloorPlan2DProps) {
+export function FloorPlan2D({ room, equipment, installations, onEquipmentDrop, onEquipmentUpdate, onEquipmentSelect }: FloorPlan2DProps) {
   const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [draggingEquipmentId, setDraggingEquipmentId] = useState<string | null>(null);
+  const [hoveredHandleId, setHoveredHandleId] = useState<string | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
 
   const minX = Math.min(...room.vertices.map(v => v.x));

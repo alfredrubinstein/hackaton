@@ -56,7 +56,7 @@ function initializeFromJSON() {
       room.installations.map(inst => ({
         id: inst.id,
         room_id: inst.room_id,
-        type: inst.type,
+        type: inst.type as 'power_point' | 'door' | 'window',
         position: inst.position,
         subtype: inst.subtype,
         created_at: inst.created_at

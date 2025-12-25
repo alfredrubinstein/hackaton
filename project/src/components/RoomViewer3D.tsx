@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import earcut from 'earcut';
-import type { Room, Installation, MedicalEquipment, Position3D, Dimensions } from '../types';
+import type { Room, Installation, MedicalEquipment, Position3D } from '../types';
 import { calculateCentroid, isEquipmentInValidPosition } from '../utils/geometry';
 import type { EquipmentTemplate } from '../data/medicalEquipmentCatalog';
 
@@ -26,7 +26,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   const controlsRef = useRef<OrbitControls | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [cameraPosition, setCameraPosition] = useState({ x: 0, y: 0, z: 0 });
+  const [_cameraPosition, setCameraPosition] = useState({ x: 0, y: 0, z: 0 });
   const roomBoundsRef = useRef<{ minX: number; maxX: number; minZ: number; maxZ: number } | null>(null);
   const roomCenterRef = useRef<{ x: number; z: number } | null>(null);
   const maxRadiusRef = useRef<number>(0);
@@ -612,7 +612,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
       const y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
 
       const raycaster = new THREE.Raycaster();
-      raycaster.setFromCamera({ x, y }, cameraRef.current);
+      raycaster.setFromCamera(new THREE.Vector2(x, y), cameraRef.current);
 
       const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
       const intersection = new THREE.Vector3();
@@ -684,7 +684,7 @@ export function RoomViewer3D({ room, installations, equipment, onEquipmentUpdate
   };
 
   const [hoveredHandleId, setHoveredHandleId] = useState<string | null>(null);
-  const [hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null);
+  const [_hoveredAxis, setHoveredAxis] = useState<'x' | 'y' | 'z' | null>(null);
 
   // Actualizar visibilidad de los ejes según la selección
   useEffect(() => {
@@ -1430,7 +1430,7 @@ function createRoom(scene: THREE.Scene, room: Room) {
   }
 }
 
-function createFloorGrid(scene: THREE.Scene, room: Room, bounds: { minX: number; maxX: number; minZ: number; maxZ: number }) {
+function createFloorGrid(scene: THREE.Scene, _room: Room, bounds: { minX: number; maxX: number; minZ: number; maxZ: number }) {
   const { minX, maxX, minZ, maxZ } = bounds;
   // Cada cuadrado de la cuadrícula representa 0.5 metros
   const gridSize = 0.5;

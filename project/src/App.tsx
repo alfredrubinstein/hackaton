@@ -28,15 +28,12 @@ function App() {
   // Property Store
   const {
     property,
-    rooms,
     selectedRoomId,
     isInitializing,
     initError,
     initialize,
     loadHomeFromData,
     selectRoom,
-    updateRooms,
-    setProperty,
     setRooms,
   } = usePropertyStore();
 
@@ -54,16 +51,13 @@ function App() {
     toggleHelp,
     setShowPhotoModal,
     setShowHomeSelector,
-    setShowRCCarPanel,
   } = useUIStore();
 
   // Equipment Store
   const {
     selectedEquipmentId,
-    draggingEquipment,
     selectEquipment,
     setDraggingEquipment,
-    clearSelection,
   } = useEquipmentStore();
 
   const setSelectedEquipmentId = selectEquipment;
@@ -81,7 +75,6 @@ function App() {
     setAnalyzing,
     setGeneratedData,
     setAnalysisError,
-    clear: clearPhotoStore,
   } = usePhotoStore();
 
   const setUploadedPhotos = setPhotos;
