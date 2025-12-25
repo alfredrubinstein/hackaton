@@ -1,5 +1,5 @@
-import { useEffect, useRef, useState } from 'react';
-import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, Info } from 'lucide-react';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, Info, Move, RotateCw, ZoomIn, CreditCard } from 'lucide-react';
 
 // Declarar tipos para OpenCV
 declare global {
@@ -25,6 +25,19 @@ interface Measurement {
   timestamp: Date;
 }
 
+type ControlMode = 'none' | 'move' | 'rotate' | 'scale';
+
+interface CreditCardTransform {
+  x: number;
+  y: number;
+  rotationX: number; // Rotación en eje X (perspectiva)
+  rotationY: number; // Rotación en eje Y (perspectiva)
+  rotationZ: number; // Rotación en eje Z (plano)
+  scale: number;
+  width: number;
+  height: number;
+}
+
 export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   const mainCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -47,6 +60,23 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   // Medidas estándar de tarjeta de crédito (en cm)
   const CREDIT_CARD_WIDTH = 8.56;  // Ancho estándar
   const CREDIT_CARD_HEIGHT = 5.398; // Alto estándar
+
+  // Estados para la tarjeta de crédito interactiva
+  const [controlMode, setControlMode] = useState<ControlMode>('none');
+  const [showCreditCard, setShowCreditCard] = useState(false);
+  const [creditCardTransform, setCreditCardTransform] = useState<CreditCardTransform>({
+    x: 0,
+    y: 0,
+    rotationX: 0,
+    rotationY: 0,
+    rotationZ: 0,
+    scale: 1,
+    width: 200, // Tamaño inicial en píxeles
+    height: 126, // Proporción de tarjeta de crédito
+  });
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{ x: number; y: number; transform: CreditCardTransform } | null>(null);
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
 
   // Cargar OpenCV.js
   useEffect(() => {
@@ -221,19 +251,32 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         
         imgOriginalRef.current = imgOrig;
         imgMainRef.current = imgM;
-        setStatus('מוכן. בחר 4 נקודות לכיול.');
+        setStatus('מוכן. בחר 4 נקודות לכיול או presiona C para usar tarjeta de crédito.');
         setIsCalibrated(false);
         setRefPoints([]);
         setMeasurementPoints([]);
         setMeasurements([]);
         setHasImage(true);
+        setShowCreditCard(false);
+        setControlMode('none');
+        // Inicializar posición de tarjeta en el centro
+        setCreditCardTransform(prev => ({
+          ...prev,
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+        }));
         
         console.log('[MeasurementTool] Estado actualizado, hasImage = true');
         
         URL.revokeObjectURL(url);
         console.log('[MeasurementTool] URL revocada');
-        setupEvents(canvas);
-        console.log('[MeasurementTool] Eventos configurados');
+        // setupEvents se llamará cuando cambie el estado
+        setTimeout(() => {
+          if (mainCanvasRef.current) {
+            setupEvents(mainCanvasRef.current);
+            console.log('[MeasurementTool] Eventos configurados');
+          }
+        }, 100);
       } catch (error) {
         console.error('[MeasurementTool] ERROR al procesar con OpenCV:', error);
         URL.revokeObjectURL(url);
@@ -251,8 +294,273 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   };
 
   const setupEvents = (canvas: HTMLCanvasElement) => {
-    canvas.onclick = (e) => handleClick(e, canvas);
+    // Limpiar eventos anteriores
+    canvas.onclick = null;
+    canvas.onmousedown = null;
+    canvas.onmousemove = null;
+    canvas.onmouseup = null;
+    canvas.onwheel = null;
+
+    if (showCreditCard && controlMode !== 'none') {
+      // Modo de control de tarjeta activo
+      canvas.onmousedown = (e) => handleCardMouseDown(e, canvas);
+      canvas.onmousemove = (e) => handleCardMouseMove(e, canvas);
+      canvas.onmouseup = () => handleCardMouseUp();
+      canvas.onwheel = (e) => handleCardWheel(e);
+    } else if (!showCreditCard || controlMode === 'none') {
+      // Modo de selección de puntos normal
+      canvas.onclick = (e) => handleClick(e, canvas);
+    }
   };
+
+  // Manejar teclas para controles tipo Blender
+  useEffect(() => {
+    if (!isOpen || !hasImage) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ignorar si está escribiendo en un input
+      if ((e.target as HTMLElement).tagName === 'INPUT') return;
+
+      switch (e.key.toLowerCase()) {
+        case 'g':
+          e.preventDefault();
+          setControlMode('move');
+          setShowCreditCard(true);
+          break;
+        case 'r':
+          e.preventDefault();
+          setControlMode('rotate');
+          setShowCreditCard(true);
+          break;
+        case 's':
+          e.preventDefault();
+          setControlMode('scale');
+          setShowCreditCard(true);
+          break;
+        case 'escape':
+        case 'q':
+          e.preventDefault();
+          setControlMode('none');
+          break;
+        case 'c':
+          if (e.ctrlKey || e.metaKey) return; // No interferir con Ctrl+C
+          e.preventDefault();
+          if (showCreditCard) {
+            // Usar esquinas de la tarjeta como puntos de calibración
+            useCardCornersAsCalibration();
+          } else {
+            setShowCreditCard(true);
+            setControlMode('move');
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, hasImage, showCreditCard, controlMode, useCardCornersAsCalibration]);
+
+  // Inicializar posición de la tarjeta en el centro cuando se muestra por primera vez
+  useEffect(() => {
+    if (showCreditCard && mainCanvasRef.current) {
+      const canvas = mainCanvasRef.current;
+      setCreditCardTransform(prev => ({
+        ...prev,
+        x: canvas.width / 2,
+        y: canvas.height / 2,
+      }));
+      redrawCanvas();
+    }
+  }, [showCreditCard]);
+
+  const handleCardMouseDown = (e: MouseEvent, canvas: HTMLCanvasElement) => {
+    if (controlMode === 'none') return;
+    
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    
+    isDraggingRef.current = true;
+    dragStartRef.current = {
+      x,
+      y,
+      transform: { ...creditCardTransform },
+    };
+  };
+
+  const handleCardMouseMove = (e: MouseEvent, canvas: HTMLCanvasElement) => {
+    if (!isDraggingRef.current || !dragStartRef.current || controlMode === 'none') return;
+
+    const rect = canvas.getBoundingClientRect();
+    const x = (e.clientX - rect.left) * (canvas.width / rect.width);
+    const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+    
+    const deltaX = x - dragStartRef.current.x;
+    const deltaY = y - dragStartRef.current.y;
+
+    if (controlMode === 'move') {
+      setCreditCardTransform(prev => ({
+        ...prev,
+        x: dragStartRef.current!.transform.x + deltaX,
+        y: dragStartRef.current!.transform.y + deltaY,
+      }));
+    } else if (controlMode === 'rotate') {
+      // Rotación basada en el movimiento del mouse
+      const centerX = dragStartRef.current.transform.x;
+      const centerY = dragStartRef.current.transform.y;
+      const angle = Math.atan2(y - centerY, x - centerX);
+      
+      setCreditCardTransform(prev => ({
+        ...prev,
+        rotationZ: angle,
+      }));
+    } else if (controlMode === 'scale') {
+      // Escala basada en la distancia desde el centro
+      const centerX = dragStartRef.current.transform.x;
+      const centerY = dragStartRef.current.transform.y;
+      const startDist = Math.sqrt(
+        Math.pow(dragStartRef.current.x - centerX, 2) +
+        Math.pow(dragStartRef.current.y - centerY, 2)
+      );
+      const currentDist = Math.sqrt(
+        Math.pow(x - centerX, 2) +
+        Math.pow(y - centerY, 2)
+      );
+      const scaleFactor = currentDist / (startDist || 1);
+      
+      setCreditCardTransform(prev => ({
+        ...prev,
+        scale: Math.max(0.1, Math.min(5, dragStartRef.current!.transform.scale * scaleFactor)),
+      }));
+    }
+
+    redrawCanvas();
+  };
+
+  const handleCardMouseUp = () => {
+    isDraggingRef.current = false;
+    dragStartRef.current = null;
+  };
+
+  const handleCardWheel = (e: WheelEvent) => {
+    if (controlMode === 'none' || !showCreditCard) return;
+    
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    setCreditCardTransform(prev => ({
+      ...prev,
+      scale: Math.max(0.1, Math.min(5, prev.scale * delta)),
+    }));
+    redrawCanvas();
+  };
+
+  const useCardCornersAsCalibration = useCallback(() => {
+    if (!window.cv || !mainCanvasRef.current) return;
+
+    const corners = getCreditCardCorners();
+    if (corners.length === 4) {
+      setRefPoints(corners);
+      setTimeout(() => {
+        autoCalibrateWithCreditCard(corners);
+      }, 100);
+      setShowCreditCard(false);
+      setControlMode('none');
+    }
+  }, [getCreditCardCorners]);
+
+  const getCreditCardCorners = useCallback((): Point[] => {
+    const { x, y, rotationZ, scale, width, height } = creditCardTransform;
+    const w = (width * scale) / 2;
+    const h = (height * scale) / 2;
+    const cos = Math.cos(rotationZ);
+    const sin = Math.sin(rotationZ);
+
+    // Esquinas de la tarjeta (relativas al centro)
+    const corners = [
+      { x: -w, y: -h },
+      { x: w, y: -h },
+      { x: w, y: h },
+      { x: -w, y: h },
+    ];
+
+    // Aplicar rotación y traslación
+    return corners.map(corner => ({
+      x: x + corner.x * cos - corner.y * sin,
+      y: y + corner.x * sin + corner.y * cos,
+    }));
+  }, [creditCardTransform]);
+
+  const drawCreditCard = useCallback(() => {
+    if (!imgMainRef.current || !mainCanvasRef.current || !window.cv || !showCreditCard) return;
+
+    const corners = getCreditCardCorners();
+    const cornerPoints = corners.map(p => new window.cv.Point(p.x, p.y));
+
+    // Dibujar la tarjeta como un rectángulo
+    const color = controlMode === 'none' 
+      ? new window.cv.Scalar(0, 255, 0, 200) // Verde semi-transparente
+      : new window.cv.Scalar(255, 165, 0, 200); // Naranja cuando está en modo de control
+
+    // Dibujar líneas del rectángulo
+    for (let i = 0; i < 4; i++) {
+      const p1 = cornerPoints[i];
+      const p2 = cornerPoints[(i + 1) % 4];
+      window.cv.line(imgMainRef.current, p1, p2, color, 3);
+    }
+
+    // Dibujar círculos en las esquinas
+    cornerPoints.forEach((point, index) => {
+      window.cv.circle(imgMainRef.current, point, 8, color, -1);
+      window.cv.putText(
+        imgMainRef.current,
+        (index + 1).toString(),
+        new window.cv.Point(point.x - 5, point.y - 10),
+        window.cv.FONT_HERSHEY_SIMPLEX,
+        0.6,
+        new window.cv.Scalar(255, 255, 255, 255),
+        2
+      );
+    });
+
+    // Dibujar centro de la tarjeta
+    window.cv.circle(
+      imgMainRef.current,
+      new window.cv.Point(creditCardTransform.x, creditCardTransform.y),
+      5,
+      color,
+      -1
+    );
+  }, [showCreditCard, creditCardTransform, controlMode, getCreditCardCorners]);
+
+  const redrawCanvas = useCallback(() => {
+    if (!imgOriginalRef.current || !imgMainRef.current || !mainCanvasRef.current || !window.cv) return;
+
+    // Restaurar imagen original
+    imgMainRef.current.delete();
+    imgMainRef.current = imgOriginalRef.current.clone();
+
+    // Dibujar tarjeta si está visible
+    if (showCreditCard) {
+      drawCreditCard();
+    }
+
+    // Mostrar en canvas
+    window.cv.imshow(mainCanvasRef.current, imgMainRef.current);
+  }, [showCreditCard, drawCreditCard]);
+
+  // Redibujar cuando cambia la transformación de la tarjeta
+  useEffect(() => {
+    if (hasImage && showCreditCard) {
+      redrawCanvas();
+    }
+  }, [creditCardTransform, hasImage, showCreditCard, redrawCanvas]);
+
+  // Actualizar eventos cuando cambia el modo de control
+  useEffect(() => {
+    if (hasImage && mainCanvasRef.current) {
+      setupEvents(mainCanvasRef.current);
+    }
+  }, [controlMode, showCreditCard, hasImage]);
 
   const handleClick = (e: MouseEvent, canvas: HTMLCanvasElement) => {
     if (!imgMainRef.current || !window.cv) return;
@@ -455,7 +763,9 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     isCalibratedRef.current = false; // Actualizar ref también
     setIsCalibrated(false);
     setMeasurements([]);
-    setStatus('מוכן. בחר 4 נקודות לכיול.');
+    setShowCreditCard(false);
+    setControlMode('none');
+    setStatus('מוכן. בחר 4 נקודות לכיול או presiona C para usar tarjeta de crédito.');
   };
 
   if (!isOpen) return null;
@@ -520,6 +830,22 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                             : 'טען תמונה תחילה'}
                         </span>
                       </div>
+                      {showCreditCard && (
+                        <div className={`px-3 py-1.5 rounded-lg flex items-center gap-2 ${
+                          controlMode === 'move' ? 'bg-blue-100 text-blue-700 border border-blue-300' :
+                          controlMode === 'rotate' ? 'bg-purple-100 text-purple-700 border border-purple-300' :
+                          controlMode === 'scale' ? 'bg-orange-100 text-orange-700 border border-orange-300' :
+                          'bg-green-100 text-green-700 border border-green-300'
+                        }`}>
+                          <CreditCard className="w-4 h-4" />
+                          <span className="text-sm font-medium">
+                            {controlMode === 'move' ? 'Mover (G)' :
+                             controlMode === 'rotate' ? 'Rotar (R)' :
+                             controlMode === 'scale' ? 'Escalar (S)' :
+                             'Tarjeta activa'}
+                          </span>
+                        </div>
+                      )}
                       {!isCalibrated && refPoints.length > 0 && (
                         <div className="px-3 py-1.5 bg-slate-100 rounded-lg">
                           <span className="text-sm text-slate-700">
@@ -565,12 +891,17 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
 
                   {/* Canvas principal - Ocupa todo el espacio disponible */}
                   <div className="flex-1 min-h-0">
-                    <div className="w-full h-full bg-slate-50 rounded-lg p-4 flex items-center justify-center border-2 border-dashed border-slate-300 relative">
+                    <div 
+                      ref={canvasContainerRef}
+                      className="w-full h-full bg-slate-50 rounded-lg p-4 flex items-center justify-center border-2 border-dashed border-slate-300 relative"
+                    >
                       {/* Canvas siempre renderizado pero oculto cuando no hay imagen */}
                       <canvas
                         ref={mainCanvasRef}
                         className={`max-w-full max-h-full rounded-lg shadow-lg ${
-                          hasImage ? 'cursor-crosshair' : 'hidden'
+                          hasImage 
+                            ? (controlMode !== 'none' ? 'cursor-grab active:cursor-grabbing' : 'cursor-crosshair')
+                            : 'hidden'
                         }`}
                         style={{ 
                           maxWidth: '100%',
@@ -607,14 +938,18 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">2.</span>
-                      <span>בחר 4 נקודות שיוצרות מלבן של כרטיס אשראי</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> para mostrar tarjeta de crédito</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">3.</span>
-                      <span>הכיול יתבצע אוטומטית עם מידות כרטיס אשראי (8.56 × 5.398 ס״מ)</span>
+                      <span>Controles: <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">G</kbd> Mover, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">R</kbd> Rotar, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">S</kbd> Escalar, Rueda para zoom</span>
                     </div>
                     <div className="flex gap-2">
                       <span className="font-semibold text-emerald-600">4.</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> de nuevo para usar las esquinas de la tarjeta como calibración</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">5.</span>
                       <span>לחץ על שתי נקודות למדידת המרחק ביניהן</span>
                     </div>
                   </div>
@@ -642,8 +977,90 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                         {measurements.length}
                       </span>
                     </div>
+                    {showCreditCard && (
+                      <>
+                        <div className="border-t border-slate-200 pt-2 mt-2">
+                          <div className="text-xs font-semibold text-slate-500 mb-1">Tarjeta de Crédito</div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-600">Escala:</span>
+                            <span className="font-semibold text-slate-800">
+                              {(creditCardTransform.scale * 100).toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between text-xs">
+                            <span className="text-slate-600">Rotación:</span>
+                            <span className="font-semibold text-slate-800">
+                              {(creditCardTransform.rotationZ * 180 / Math.PI).toFixed(0)}°
+                            </span>
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
+
+                {/* Controles de tarjeta */}
+                {hasImage && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+                    <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      Controles de Tarjeta
+                    </h3>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          setShowCreditCard(!showCreditCard);
+                          if (!showCreditCard) setControlMode('move');
+                          else setControlMode('none');
+                        }}
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          showCreditCard
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      >
+                        {showCreditCard ? 'Ocultar Tarjeta' : 'Mostrar Tarjeta (C)'}
+                      </button>
+                      {showCreditCard && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => setControlMode('move')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'move'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <Move className="w-3 h-3" />
+                            Mover (G)
+                          </button>
+                          <button
+                            onClick={() => setControlMode('rotate')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'rotate'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <RotateCw className="w-3 h-3" />
+                            Rotar (R)
+                          </button>
+                          <button
+                            onClick={() => setControlMode('scale')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'scale'
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <ZoomIn className="w-3 h-3" />
+                            Escalar (S)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Historial de mediciones */}
                 {measurements.length > 0 && (
