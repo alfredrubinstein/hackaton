@@ -40,3 +40,8 @@ Thumbs.db
 *.blend
 *.fbx
 *.obj
+
+# Archivos Markdown (excepto README)
+*.md
+!README.md
+!readme.md
