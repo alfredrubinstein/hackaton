@@ -8,6 +8,7 @@ interface UIState {
   showPhotoModal: boolean;
   showHomeSelector: boolean;
   showRCCarPanel: boolean;
+  showMeasurementTool: boolean;
   cameraEnabled: boolean;
   setViewMode: (mode: '2d' | '3d') => void;
   toggleLeftPanel: () => void;
@@ -16,6 +17,7 @@ interface UIState {
   setShowPhotoModal: (show: boolean) => void;
   setShowHomeSelector: (show: boolean) => void;
   setShowRCCarPanel: (show: boolean) => void;
+  setShowMeasurementTool: (show: boolean) => void;
   setCameraEnabled: (enabled: boolean) => void;
 }
 
@@ -27,6 +29,7 @@ export const useUIStore = create<UIState>((set) => ({
   showPhotoModal: false,
   showHomeSelector: false,
   showRCCarPanel: false,
+  showMeasurementTool: false,
   cameraEnabled: false,
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleLeftPanel: () => set((state) => ({ showLeftPanel: !state.showLeftPanel })),
@@ -35,6 +38,7 @@ export const useUIStore = create<UIState>((set) => ({
   setShowPhotoModal: (show) => set({ showPhotoModal: show }),
   setShowHomeSelector: (show) => set({ showHomeSelector: show }),
   setShowRCCarPanel: (show) => set({ showRCCarPanel: show }),
+  setShowMeasurementTool: (show) => set({ showMeasurementTool: show }),
   setCameraEnabled: (enabled) => set({ cameraEnabled: enabled }),
 }));
 

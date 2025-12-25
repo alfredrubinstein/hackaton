@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen, Ruler } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -10,6 +10,7 @@ import { AccessibilityAnnouncer } from './components/AccessibilityAnnouncer';
 import { PhotoUploader } from './components/PhotoUploader';
 import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
 import { RCCarControlPanel } from '../rc/components/RCCarControlPanel';
+import { MeasurementTool } from './components/MeasurementTool';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
 import { visionService } from './services/visionService';
@@ -46,11 +47,13 @@ function App() {
     showPhotoModal,
     showHomeSelector,
     showRCCarPanel,
+    showMeasurementTool,
     cameraEnabled,
     setViewMode,
     toggleHelp,
     setShowPhotoModal,
     setShowHomeSelector,
+    setShowMeasurementTool,
   } = useUIStore();
 
   // Equipment Store
@@ -428,6 +431,14 @@ function App() {
               יצירת סביבה עם AI
             </button>
             <button
+              onClick={() => setShowMeasurementTool(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="כלי מדידה"
+            >
+              <Ruler className="w-4 h-4" />
+              כלי מדידה
+            </button>
+            <button
               onClick={handleLoadFromJSON}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
               aria-label="פתח חדש"
@@ -786,6 +797,12 @@ function App() {
           </div>
         </div>
       )}
+
+      {/* Modal para herramienta de medición */}
+      <MeasurementTool
+        isOpen={showMeasurementTool}
+        onClose={() => setShowMeasurementTool(false)}
+      />
     </div>
   );
 }
