@@ -566,8 +566,16 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     if (!imgMainRef.current || !window.cv) return;
     
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    // Calcular coordenadas relativas al canvas visual
+    const xVisual = e.clientX - rect.left;
+    const yVisual = e.clientY - rect.top;
+    
+    // Convertir coordenadas del espacio visual al espacio real del canvas
+    // Considerando el escalado del canvas (object-fit: contain)
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const x = xVisual * scaleX;
+    const y = yVisual * scaleY;
     
     // Usar el ref para obtener el valor actual de isCalibrated
     const calibrated = isCalibratedRef.current;
