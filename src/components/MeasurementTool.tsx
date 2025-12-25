@@ -313,6 +313,42 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     }
   };
 
+  const getCreditCardCorners = useCallback((): Point[] => {
+    const { x, y, rotationZ, scale, width, height } = creditCardTransform;
+    const w = (width * scale) / 2;
+    const h = (height * scale) / 2;
+    const cos = Math.cos(rotationZ);
+    const sin = Math.sin(rotationZ);
+
+    // Esquinas de la tarjeta (relativas al centro)
+    const corners = [
+      { x: -w, y: -h },
+      { x: w, y: -h },
+      { x: w, y: h },
+      { x: -w, y: h },
+    ];
+
+    // Aplicar rotación y traslación
+    return corners.map(corner => ({
+      x: x + corner.x * cos - corner.y * sin,
+      y: y + corner.x * sin + corner.y * cos,
+    }));
+  }, [creditCardTransform]);
+
+  const useCardCornersAsCalibration = useCallback(() => {
+    if (!window.cv || !mainCanvasRef.current) return;
+
+    const corners = getCreditCardCorners();
+    if (corners.length === 4) {
+      setRefPoints(corners);
+      setTimeout(() => {
+        autoCalibrateWithCreditCard(corners);
+      }, 100);
+      setShowCreditCard(false);
+      setControlMode('none');
+    }
+  }, [getCreditCardCorners]);
+
   // Manejar teclas para controles tipo Blender
   useEffect(() => {
     if (!isOpen || !hasImage) return;
@@ -453,42 +489,6 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     }));
     redrawCanvas();
   };
-
-  const useCardCornersAsCalibration = useCallback(() => {
-    if (!window.cv || !mainCanvasRef.current) return;
-
-    const corners = getCreditCardCorners();
-    if (corners.length === 4) {
-      setRefPoints(corners);
-      setTimeout(() => {
-        autoCalibrateWithCreditCard(corners);
-      }, 100);
-      setShowCreditCard(false);
-      setControlMode('none');
-    }
-  }, [getCreditCardCorners]);
-
-  const getCreditCardCorners = useCallback((): Point[] => {
-    const { x, y, rotationZ, scale, width, height } = creditCardTransform;
-    const w = (width * scale) / 2;
-    const h = (height * scale) / 2;
-    const cos = Math.cos(rotationZ);
-    const sin = Math.sin(rotationZ);
-
-    // Esquinas de la tarjeta (relativas al centro)
-    const corners = [
-      { x: -w, y: -h },
-      { x: w, y: -h },
-      { x: w, y: h },
-      { x: -w, y: h },
-    ];
-
-    // Aplicar rotación y traslación
-    return corners.map(corner => ({
-      x: x + corner.x * cos - corner.y * sin,
-      y: y + corner.x * sin + corner.y * cos,
-    }));
-  }, [creditCardTransform]);
 
   const drawCreditCard = useCallback(() => {
     if (!imgMainRef.current || !mainCanvasRef.current || !window.cv || !showCreditCard) return;
