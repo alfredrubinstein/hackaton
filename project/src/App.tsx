@@ -16,6 +16,8 @@ import { visionService } from './services/visionService';
 import { roomGeneratorService } from './services/roomGeneratorService';
 import { availableHomes } from './data/homes/index';
 import type { Room, MedicalEquipment, Position3D, Installation } from './types';
+import type { PhotoFile } from './components/PhotoUploader';
+import type { GeneratedRoomData } from './services/roomGeneratorService';
 import { usePropertyStore } from './stores/propertyStore';
 import { useUIStore } from './stores/uiStore';
 import { useEquipmentStore } from './stores/equipmentStore';
@@ -34,6 +36,8 @@ function App() {
     loadHomeFromData,
     selectRoom,
     updateRooms,
+    setProperty,
+    setRooms,
   } = usePropertyStore();
 
   // UI Store
@@ -62,6 +66,8 @@ function App() {
     clearSelection,
   } = useEquipmentStore();
 
+  const setSelectedEquipmentId = selectEquipment;
+
   // Notification Store
   const { announcement, setAnnouncement } = useNotificationStore();
 
@@ -77,6 +83,10 @@ function App() {
     setAnalysisError,
     clear: clearPhotoStore,
   } = usePhotoStore();
+
+  const setUploadedPhotos = setPhotos;
+  const setIsAnalyzing = setAnalyzing;
+  const setGeneratedRoomData = setGeneratedData;
 
   const { room, installations, equipment, loading, error, setEquipment } = useRoomData(selectedRoomId);
 
@@ -218,82 +228,12 @@ function App() {
     setAnnouncement('דו״ח בטיחות יוצא בהצלחה');
   };
 
-  const loadHomeFromData = async (jsonData: any) => {
+  // loadHomeFromData is already provided by usePropertyStore
+  const handleLoadHomeFromData = async (jsonData: any) => {
     try {
-      // Detectar formato: nuevo (con id, name directamente) o antiguo (con property)
-      let propertyData: { name: string; view_box: string };
-      let roomsData: any[];
-
-      if (jsonData.id && jsonData.name && jsonData.rooms) {
-        // Formato nuevo: datos directamente en el objeto raíz
-        propertyData = {
-          name: jsonData.name,
-          view_box: jsonData.view_box || '0 0 100 100'
-        };
-        roomsData = jsonData.rooms;
-      } else if (jsonData.property && jsonData.rooms) {
-        // Formato antiguo: datos dentro de property
-        propertyData = {
-          name: jsonData.property.name,
-          view_box: jsonData.property.view_box || '0 0 100 100'
-        };
-        roomsData = jsonData.rooms;
-      } else {
-        throw new Error('פורמט JSON לא תקין. חייב להכיל property/name ו-rooms.');
-      }
-
-      // Crear la propiedad
-      const newProperty = await dataService.createProperty(propertyData);
-
-      // Crear las habitaciones y sus datos
-      for (const roomData of roomsData) {
-        const newRoom = await dataService.createRoom({
-          property_id: newProperty.id,
-          name: roomData.name,
-          svg_path: roomData.svg_path,
-          vertices: roomData.vertices,
-          wall_height: roomData.wall_height || 2.6
-        });
-
-        // Crear instalaciones
-        if (roomData.installations && Array.isArray(roomData.installations)) {
-          for (const installation of roomData.installations) {
-            await dataService.createInstallation({
-              room_id: newRoom.id,
-              type: installation.type as 'power_point' | 'door' | 'window',
-              position: installation.position,
-              subtype: installation.subtype || ''
-            });
-          }
-        }
-
-        // Crear equipos médicos
-        if (roomData.equipment && Array.isArray(roomData.equipment)) {
-          for (const equipment of roomData.equipment) {
-            await dataService.createMedicalEquipment({
-              room_id: newRoom.id,
-              name: equipment.name,
-              type: equipment.type,
-              position: equipment.position,
-              rotation: equipment.rotation || { x: 0, y: 0, z: 0 },
-              dimensions: equipment.dimensions
-            });
-          }
-        }
-      }
-
-      // Actualizar el estado con la nueva propiedad
-      const updatedProperty = await dataService.getProperty(newProperty.id);
-      const updatedRooms = await dataService.getRoomsByProperty(newProperty.id);
-
-      setProperty(updatedProperty);
-      setRooms(updatedRooms);
-      if (updatedRooms.length > 0) {
-        setSelectedRoomId(updatedRooms[0].id);
-      }
-
+      await loadHomeFromData(jsonData);
       setShowHomeSelector(false);
-      setAnnouncement(`Propiedad "${newProperty.name}" cargada exitosamente`);
+      setAnnouncement(`Propiedad cargada exitosamente`);
     } catch (error: any) {
       console.error('Error cargando casa:', error);
       setAnnouncement(`שגיאה בטעינת בית: ${error.message}`);
@@ -306,7 +246,7 @@ function App() {
   };
 
   const handleSelectHome = async (homeData: any) => {
-    await loadHomeFromData(homeData);
+    await handleLoadHomeFromData(homeData);
   };
 
 
@@ -392,7 +332,7 @@ function App() {
       // Actualizar lista de habitaciones
       const updatedRooms = await dataService.getRoomsByProperty(property.id);
       setRooms(updatedRooms);
-      setSelectedRoomId(newRoom.id);
+      selectRoom(newRoom.id);
 
       // Cerrar modal y limpiar
       setShowPhotoModal(false);
@@ -475,7 +415,7 @@ function App() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setShowHelp(!showHelp)}
+              onClick={() => toggleHelp()}
               className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
               aria-label="החלף עזרה"
             >
@@ -544,7 +484,7 @@ function App() {
                       
                       const updatedRooms = await dataService.getRoomsByProperty(property.id);
                       setRooms(updatedRooms);
-                      setSelectedRoomId(newRoom.id);
+                      selectRoom(newRoom.id);
                       setAnnouncement(`חדר "${mapData.name}" נוצר ממיפוי RC`);
                     } catch (err: any) {
                       console.error('Error creando habitación desde mapa:', err);
