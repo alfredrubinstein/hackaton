@@ -18,7 +18,7 @@ export interface HomeFile {
 export const availableHomes: HomeFile[] = [
   {
     id: 'centro-medico-san-rafael',
-    name: 'יד שרה',
+    name: 'Centro Médico San Rafael',
     data: centroMedicoSanRafael
   },
   {

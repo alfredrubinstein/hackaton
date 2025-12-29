@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen, Ruler, Bot } from 'lucide-react';
+import { HeartHandshake, Loader2, Package, HelpCircle, MapPin, FileText, Download, Image, X, FolderOpen, Ruler } from 'lucide-react';
 import { RoomViewer3D } from './components/RoomViewer3D';
 import { FloorPlan2D } from './components/FloorPlan2D';
 import { EquipmentPanel } from './components/EquipmentPanel';
@@ -11,8 +11,6 @@ import { PhotoUploader } from './components/PhotoUploader';
 import { RoomAnalysisPreview } from './components/RoomAnalysisPreview';
 import { RCCarControlPanel } from '../project/rc/components/RCCarControlPanel';
 import { MeasurementTool } from './components/MeasurementTool';
-import { RobotMeasurementView } from './components/RobotMeasurementView';
-import { WelcomeScreen } from './components/WelcomeScreen';
 import { useRoomData } from './hooks/useRoomData';
 import { dataService } from './services/dataService';
 import { visionService } from './services/visionService';
@@ -50,16 +48,12 @@ function App() {
     showHomeSelector,
     showRCCarPanel,
     showMeasurementTool,
-    showRobotMeasurement,
-    showWelcomeScreen,
     cameraEnabled,
     setViewMode,
     toggleHelp,
     setShowPhotoModal,
     setShowHomeSelector,
     setShowMeasurementTool,
-    setShowRobotMeasurement,
-    setShowWelcomeScreen,
   } = useUIStore();
 
   // Equipment Store
@@ -400,12 +394,6 @@ function App() {
   return (
     <div className="h-screen bg-gradient-to-br from-slate-100 to-slate-200 flex flex-col overflow-hidden">
       <AccessibilityAnnouncer message={announcement} />
-      
-      {/* Pantalla de bienvenida */}
-      <WelcomeScreen 
-        isOpen={showWelcomeScreen} 
-        onClose={() => setShowWelcomeScreen(false)} 
-      />
 
       {/* Header compacto */}
       <header className="bg-white shadow-md border-b border-slate-200 flex-shrink-0">
@@ -417,7 +405,7 @@ function App() {
                 Care In Every Home
               </h1>
               <p className="text-xs text-slate-600">
-                יד שרה
+                {property?.name || 'מערכת ניהול מרחבים רפואיים'}
               </p>
             </div>
           </div>
@@ -433,54 +421,42 @@ function App() {
         </div>
         {/* Sección de botones horizontales debajo del título */}
         <div className="px-4 py-2 border-t border-slate-200">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowPhotoModal(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="יצירת סביבה עם AI"
+            >
+              <Image className="w-4 h-4" />
+              יצירת סביבה עם AI
+            </button>
+            <button
+              onClick={() => setShowMeasurementTool(true)}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="כלי מדידה"
+            >
+              <Ruler className="w-4 h-4" />
+              כלי מדידה
+            </button>
+            <button
+              onClick={handleLoadFromJSON}
+              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
+              aria-label="פתח חדש"
+            >
+              <FolderOpen className="w-4 h-4" />
+              פתח חדש
+            </button>
+            {room && (
               <button
-                onClick={() => setShowPhotoModal(true)}
+                onClick={handleExportSecurityReport}
                 className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                aria-label="יצירת סביבה עם AI"
+                aria-label="ייצא דו״ח בטיחות ועצות"
               >
-                <Image className="w-4 h-4" />
-                יצירת סביבה עם AI
+                <FileText className="w-4 h-4" />
+                <span>דו״ח בטיחות</span>
+                <Download className="w-4 h-4" />
               </button>
-              <button
-                onClick={() => setShowMeasurementTool(true)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                aria-label="כלי מדידה"
-              >
-                <Ruler className="w-4 h-4" />
-                כלי מדידה
-              </button>
-              <button
-                onClick={() => setShowRobotMeasurement(true)}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                aria-label="מדידה ברובוט"
-              >
-                <Bot className="w-4 h-4" />
-                מדידה ברובוט
-              </button>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleLoadFromJSON}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                aria-label="פתח חדש"
-              >
-                <FolderOpen className="w-4 h-4" />
-                פתח חדש
-              </button>
-              {room && (
-                <button
-                  onClick={handleExportSecurityReport}
-                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg transition-colors flex items-center gap-2 text-sm font-medium"
-                  aria-label="ייצא דו״ח בטיחות ועצות"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>דו״ח בטיחות</span>
-                  <Download className="w-4 h-4" />
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </header>
@@ -826,12 +802,6 @@ function App() {
       <MeasurementTool
         isOpen={showMeasurementTool}
         onClose={() => setShowMeasurementTool(false)}
-      />
-
-      {/* Modal para medición con robot */}
-      <RobotMeasurementView
-        isOpen={showRobotMeasurement}
-        onClose={() => setShowRobotMeasurement(false)}
       />
     </div>
   );

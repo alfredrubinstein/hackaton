@@ -3,12 +3,17 @@ node_modules/
 jspm_packages/
 .pnp
 .pnp.js
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
 
 # Producción / Build
 dist/
+dist-ssr/
 build/
 out/
 .next/
+*.local
 
 # Variables de entorno (¡Seguridad!)
 .env
@@ -22,26 +27,63 @@ out/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+lerna-debug.log*
+pnpm-debug.log*
 logs/
 *.log
 
-# Base de Datos y Cache
-.mongodb/
+# Cache y temporales
 .cache/
+.parcel-cache/
+.vite/
 .eslintcache
+*.tsbuildinfo
+.turbo/
+
+# Base de Datos
+.mongodb/
+*.sqlite
+*.sqlite3
+*.db
+
+# Testing
+coverage/
+*.lcov
+.nyc_output/
+.jest/
 
 # Archivos de Sistema
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini
+
+# IDEs y Editores
 .vscode/
 .idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
 
 # Modelos 3D pesados (Opcional, si usas archivos de trabajo grandes)
 *.blend
 *.fbx
 *.obj
+*.3ds
+*.max
 
-# Archivos Markdown (excepto README)
+# Archivos Markdown (excepto README.md y README.MD en cualquier combinación)
 *.md
 !README.md
+!README.MD
 !readme.md
+!readme.MD

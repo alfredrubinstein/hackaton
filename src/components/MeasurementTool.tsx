@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, CreditCard } from 'lucide-react';
+import { X, Loader2, Upload, Ruler, CheckCircle2, AlertCircle, Image as ImageIcon, RotateCcw, Info, Move, RotateCw, ZoomIn, CreditCard } from 'lucide-react';
 
 // Declarar tipos para OpenCV
 declare global {
@@ -57,11 +57,11 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   const [calibrationHeight, setCalibrationHeight] = useState('');
   const [hasImage, setHasImage] = useState(false);
   
-  // Medidas estándar de hoja A4 horizontal (en cm)
-  const CREDIT_CARD_WIDTH = 29.7;  // Ancho A4 horizontal
-  const CREDIT_CARD_HEIGHT = 21; // Alto A4 horizontal
+  // Medidas estándar de tarjeta de crédito (en cm)
+  const CREDIT_CARD_WIDTH = 8.56;  // Ancho estándar
+  const CREDIT_CARD_HEIGHT = 5.398; // Alto estándar
 
-  // Estados para la hoja A4 interactiva
+  // Estados para la tarjeta de crédito interactiva
   const [controlMode, setControlMode] = useState<ControlMode>('none');
   const [showCreditCard, setShowCreditCard] = useState(false);
   const [creditCardTransform, setCreditCardTransform] = useState<CreditCardTransform>({
@@ -71,8 +71,8 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     rotationY: 0,
     rotationZ: 0,
     scale: 1,
-    width: 297, // Tamaño inicial en píxeles (proporción A4 horizontal)
-    height: 210, // Proporción A4 horizontal
+    width: 200, // Tamaño inicial en píxeles
+    height: 126, // Proporción de tarjeta de crédito
   });
   const isDraggingRef = useRef(false);
   const dragStartRef = useRef<{ x: number; y: number; transform: CreditCardTransform } | null>(null);
@@ -251,7 +251,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         
         imgOriginalRef.current = imgOrig;
         imgMainRef.current = imgM;
-        setStatus('מוכן. בחר 4 נקודות לכיול ou presiona C para usar hoja A4.');
+        setStatus('מוכן. בחר 4 נקודות לכיול או presiona C para usar tarjeta de crédito.');
         setIsCalibrated(false);
         setRefPoints([]);
         setMeasurementPoints([]);
@@ -259,7 +259,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         setHasImage(true);
         setShowCreditCard(false);
         setControlMode('none');
-        // Inicializar posición de hoja A4 en el centro
+        // Inicializar posición de tarjeta en el centro
         setCreditCardTransform(prev => ({
           ...prev,
           x: canvas.width / 2,
@@ -320,7 +320,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     const cos = Math.cos(rotationZ);
     const sin = Math.sin(rotationZ);
 
-    // Esquinas de la hoja A4 (relativas al centro)
+    // Esquinas de la tarjeta (relativas al centro)
     const corners = [
       { x: -w, y: -h },
       { x: w, y: -h },
@@ -382,7 +382,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
           if (e.ctrlKey || e.metaKey) return; // No interferir con Ctrl+C
           e.preventDefault();
           if (showCreditCard) {
-            // Usar esquinas de la hoja A4 como puntos de calibración
+            // Usar esquinas de la tarjeta como puntos de calibración
             useCardCornersAsCalibration();
           } else {
             setShowCreditCard(true);
@@ -396,7 +396,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, hasImage, showCreditCard, controlMode, useCardCornersAsCalibration]);
 
-  // Inicializar posición de la hoja A4 en el centro cuando se muestra por primera vez
+  // Inicializar posición de la tarjeta en el centro cuando se muestra por primera vez
   useEffect(() => {
     if (showCreditCard && mainCanvasRef.current) {
       const canvas = mainCanvasRef.current;
@@ -496,7 +496,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     const corners = getCreditCardCorners();
     const cornerPoints = corners.map(p => new window.cv.Point(p.x, p.y));
 
-    // Dibujar la hoja A4 como un rectángulo
+    // Dibujar la tarjeta como un rectángulo
     const color = controlMode === 'none' 
       ? new window.cv.Scalar(0, 255, 0, 200) // Verde semi-transparente
       : new window.cv.Scalar(255, 165, 0, 200); // Naranja cuando está en modo de control
@@ -522,7 +522,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       );
     });
 
-    // Dibujar centro de la hoja A4
+    // Dibujar centro de la tarjeta
     window.cv.circle(
       imgMainRef.current,
       new window.cv.Point(creditCardTransform.x, creditCardTransform.y),
@@ -539,7 +539,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     imgMainRef.current.delete();
     imgMainRef.current = imgOriginalRef.current.clone();
 
-    // Dibujar hoja A4 si está visible
+    // Dibujar tarjeta si está visible
     if (showCreditCard) {
       drawCreditCard();
     }
@@ -566,16 +566,8 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
     if (!imgMainRef.current || !window.cv) return;
     
     const rect = canvas.getBoundingClientRect();
-    // Calcular coordenadas relativas al canvas visual
-    const xVisual = e.clientX - rect.left;
-    const yVisual = e.clientY - rect.top;
-    
-    // Convertir coordenadas del espacio visual al espacio real del canvas
-    // Considerando el escalado del canvas (object-fit: contain)
-    const scaleX = canvas.width / rect.width;
-    const scaleY = canvas.height / rect.height;
-    const x = xVisual * scaleX;
-    const y = yVisual * scaleY;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
     // Usar el ref para obtener el valor actual de isCalibrated
     const calibrated = isCalibratedRef.current;
@@ -603,7 +595,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
         drawMarker(x, y, new window.cv.Scalar(0, 255, 0, 255), newPoints.length.toString());
         
         if (newPoints.length === 4) {
-          // Automáticamente calibrar con medidas de hoja A4 horizontal
+          // Automáticamente calibrar con medidas de tarjeta de crédito
           setTimeout(() => {
             autoCalibrateWithCreditCard(newPoints);
           }, 100);
@@ -639,7 +631,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
       points.flatMap((p) => [p.x, p.y])
     );
     
-    // Usar medidas estándar de hoja A4 horizontal
+    // Usar medidas estándar de tarjeta de crédito
     const dstMat = window.cv.matFromArray(4, 1, window.cv.CV_32FC2, [
       0, 0,
       CREDIT_CARD_WIDTH, 0,
@@ -781,7 +773,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
   return (
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-        <div className="bg-white rounded-xl shadow-2xl w-[1600px] h-[900px] overflow-hidden flex flex-col">
+        <div className="bg-white rounded-xl shadow-2xl max-w-7xl w-full max-h-[95vh] overflow-hidden flex flex-col">
           {/* Header mejorado */}
           <div className="bg-gradient-to-r from-emerald-600 to-emerald-700 text-white px-6 py-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -850,7 +842,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                             {controlMode === 'move' ? 'Mover (G)' :
                              controlMode === 'rotate' ? 'Rotar (R)' :
                              controlMode === 'scale' ? 'Escalar (S)' :
-                             'Hoja A4 activa'}
+                             'Tarjeta activa'}
                           </span>
                         </div>
                       )}
@@ -933,6 +925,36 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
             {/* Panel derecho - Información y mediciones */}
             <div className="w-80 bg-slate-50 border-l border-slate-200 flex flex-col overflow-y-auto">
               <div className="p-4 space-y-4">
+                {/* Instrucciones */}
+                <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Info className="w-5 h-5 text-emerald-600" />
+                    <h3 className="font-semibold text-slate-800">הוראות שימוש</h3>
+                  </div>
+                  <div className="space-y-2 text-sm text-slate-600">
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">1.</span>
+                      <span>טען תמונה של החדר או הסביבה</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">2.</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> para mostrar tarjeta de crédito</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">3.</span>
+                      <span>Controles: <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">G</kbd> Mover, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">R</kbd> Rotar, <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">S</kbd> Escalar, Rueda para zoom</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">4.</span>
+                      <span>Presiona <kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-xs font-mono">C</kbd> de nuevo para usar las esquinas de la tarjeta como calibración</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <span className="font-semibold text-emerald-600">5.</span>
+                      <span>לחץ על שתי נקודות למדידת המרחק ביניהן</span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Estado actual */}
                 <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
                   <h3 className="font-semibold text-slate-800 mb-3">מצב נוכחי</h3>
@@ -958,7 +980,7 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     {showCreditCard && (
                       <>
                         <div className="border-t border-slate-200 pt-2 mt-2">
-                          <div className="text-xs font-semibold text-slate-500 mb-1">Hoja A4 Horizontal</div>
+                          <div className="text-xs font-semibold text-slate-500 mb-1">Tarjeta de Crédito</div>
                           <div className="flex justify-between text-xs">
                             <span className="text-slate-600">Escala:</span>
                             <span className="font-semibold text-slate-800">
@@ -976,6 +998,69 @@ export function MeasurementTool({ isOpen, onClose }: MeasurementToolProps) {
                     )}
                   </div>
                 </div>
+
+                {/* Controles de tarjeta */}
+                {hasImage && (
+                  <div className="bg-white rounded-lg p-4 shadow-sm border border-slate-200">
+                    <h3 className="font-semibold text-slate-800 mb-3 flex items-center gap-2">
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      Controles de Tarjeta
+                    </h3>
+                    <div className="space-y-2">
+                      <button
+                        onClick={() => {
+                          setShowCreditCard(!showCreditCard);
+                          if (!showCreditCard) setControlMode('move');
+                          else setControlMode('none');
+                        }}
+                        className={`w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          showCreditCard
+                            ? 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            : 'bg-slate-200 text-slate-700 hover:bg-slate-300'
+                        }`}
+                      >
+                        {showCreditCard ? 'Ocultar Tarjeta' : 'Mostrar Tarjeta (C)'}
+                      </button>
+                      {showCreditCard && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => setControlMode('move')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'move'
+                                ? 'bg-blue-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <Move className="w-3 h-3" />
+                            Mover (G)
+                          </button>
+                          <button
+                            onClick={() => setControlMode('rotate')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'rotate'
+                                ? 'bg-purple-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <RotateCw className="w-3 h-3" />
+                            Rotar (R)
+                          </button>
+                          <button
+                            onClick={() => setControlMode('scale')}
+                            className={`px-2 py-1.5 rounded text-xs font-medium transition-colors flex items-center justify-center gap-1 ${
+                              controlMode === 'scale'
+                                ? 'bg-orange-600 text-white'
+                                : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                            }`}
+                          >
+                            <ZoomIn className="w-3 h-3" />
+                            Escalar (S)
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Historial de mediciones */}
                 {measurements.length > 0 && (
